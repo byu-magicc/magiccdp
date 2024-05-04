@@ -1,0 +1,30 @@
+site_name: MAGICC Lab Differentiable Programming Tutorials
+
+theme:
+  name: material
+  icon: 
+    logo: material/quadcopter
+
+  features:
+    # - navigation.tabs
+    - navigation.expand
+    - navigation.sections
+
+plugins:
+  - mkdocstrings
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+
+nav:
+  - "index.md"

@@ -20,7 +20,9 @@ dynamic = [
     "version",
 ]
 
-
+# These are optional dependencies.
+# You can install the `dev` dependencies 
+# by running `pip install -e .[dev]`
 [project.optional-dependencies]
 dev = [
     "pytest",
@@ -29,6 +31,13 @@ dev = [
     "mkdocs-material",
     "mkdocstrings[python]",
 ]
+
+# This lets pip know what folders should be included / ignored
+# when the package is installed.
+[tool.setuptools.packages.find]
+include = ["magiccdp*"]
+exclude = ["docs*", "jupyter_tutorials*"]
+
 
 [build-system]
 # AVOID CHANGING REQUIRES: IT WILL BE UPDATED BY PYSCAFFOLD!
