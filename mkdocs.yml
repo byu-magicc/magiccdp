@@ -27,4 +27,4 @@ extra_javascript:
 
 
 nav:
-  - "index.md"
+  - Home: "index.md"
