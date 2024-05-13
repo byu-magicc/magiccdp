@@ -9,12 +9,13 @@ def __():
     import marimo as mo
     import jax
     import jax.numpy as jnp
+    import numpy as np
     import matplotlib.pyplot as plt
 
     mo.md(r"""
     # Introduction to Differentiable Programming
     """)
-    return jax, jnp, mo, plt
+    return jax, jnp, mo, np, plt
 
 
 @app.cell
@@ -68,7 +69,7 @@ def __(jax, key_0, plt):
     return ax_1, fig_1, fs_x, fs_xkey, fs_y, fs_ykey, key_1
 
 
-@app.cell(hide_code=True)
+@app.cell
 def __(mo):
     mo.md(r"""
     We can interpolate between the points using the equation for a line:
@@ -79,12 +80,14 @@ def __(mo):
 
     But what should we put as the values of $m$ and $b$? These two variables are called **parameters**. They define an entire family of lines. We specify exactly what line we want by choosing a specific value for $m$ and $b$.
 
+    Intuitively, you can think of $m$ and $b$ as "control knobs" that change the shape of our function. Changing the control knobs morphs the function into a different form.
+
     Using the sliders below, see if you can interpolate the two points by hand.
     """)
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def __(mo):
     fs_m_slider = mo.ui.slider(
         start=-5.0,
@@ -107,25 +110,249 @@ def __(mo):
     def fs_linear(x, m, b):
         return m*x + b
 
-    fs_m_b_array = mo.ui.array([
+    # # This array is an alternate way to show both the m and b values, but vstack / hstack is cleaner.
+    # fs_m_b_array = mo.ui.array([
+    #     fs_m_slider,
+    #     fs_b_slider,
+    # ])
+    # fs_m_b_array
+
+    mo.vstack([
         fs_m_slider,
-        fs_b_slider,
+        fs_b_slider
     ])
-    fs_m_b_array
-    return fs_b_slider, fs_linear, fs_m_b_array, fs_m_slider
+    return fs_b_slider, fs_linear, fs_m_slider
 
 
-@app.cell(hide_code=True)
-def __(fs_linear, fs_m_b_array, fs_x, fs_y, jnp, plt):
+@app.cell
+def __(fs_b_slider, fs_linear, fs_m_slider, fs_x, fs_y, jnp, plt):
     fs_grid = jnp.linspace(0,1)
 
     fs_fig_2, fs_ax_2 = plt.subplots()
     fs_ax_2.set_xlim((0,1))
     fs_ax_2.set_ylim((0,1))
     fs_ax_2.plot(fs_x, fs_y, "rx")
-    m, b = fs_m_b_array.value
+    m, b = (fs_m_slider.value, fs_b_slider.value)
     fs_ax_2.plot(fs_grid, fs_linear(fs_grid, m, b), "b-")
     return b, fs_ax_2, fs_fig_2, fs_grid, m
+
+
+@app.cell
+def __(fs_b_slider, fs_linear, fs_m_slider, fs_x, fs_y, jnp, mo):
+    def fs_error(m,b):
+        return jnp.sum((fs_y - fs_linear(fs_x, m, b))**2)
+
+    mo.vstack([
+        mo.md(r"""
+        Tuning this by hand is a bit tricky. We also don't have a way to quantify how "wrong" we are. Let's define an error function that tracks the error in our model.
+
+        Given the x-coordinates $x_1$ and $x_2$ of our two points, 
+        
+        * The _true_ values of $y$ are $y_1$ and $y_2$. 
+        * The _predicted_ values from our linear model are $f(x_1)$ and $f(x_2)$.
+
+        Let's use the following error function:
+
+        $$
+        E(m, b, x_1, x_2, y_1, y_2) = (y_1 - f(x_1))^2 + (y_2 - f(x_2))^2.
+        $$
+
+        Try playing with the sliders again, and see how low you can make the error.
+        """),
+        mo.vstack([
+            fs_m_slider,
+            fs_b_slider,
+        ]),
+        mo.md(f"Error: {fs_error(fs_m_slider.value, fs_b_slider.value)}"),
+        mo.md("Tip: The sliders in this cell and the sliders above the plot are linked. Use either one you'd like!").callout(kind="info")
+    ])
+    return fs_error,
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.hstack([
+        mo.md(r"""
+        Tuning by hand is all fine and good, but we as researchers invented computers for a very important reason: we are lazy. ("Efficient" is probably a more elegant term.) Why waste our time on this if we can get a computer to do it for us?
+
+        The question is, how do we get a computer to do this? Well if you look closely at our error function above, it has the important property that:
+
+        * $E(\cdots) = 0$ if and only if our model is correct
+        * $E(\cdots) > 0$ if and only if our model has some error
+
+        If our error $E(\cdots)$ is non-zero, we simply need to make the error decrease. If we can decrease the error to exactly zero, we're done.
+
+        The "control knobs" the computer can turn are $m$ and $b$. Notice that $E(\cdots)$ is a function of $m$ and $b$:
+
+        $$
+        E(m,b,x_1,x_2,y_1,y_2) = (y_1 - (m x_1+b)))^2 + (y_2 - (m x_2+b))^2
+        $$
+
+        So what direction should the computer turn $m$ and $b$ to make the error go down?
+        """)
+    ])
+    return
+
+
+@app.cell
+def __(mo):
+    mo.vstack([
+        mo.md("## The Power of Derivatives"),
+        mo.image("../images/vader_derivatives.jpg"),
+        mo.md(r"""
+        Remember derivatives from Calculus? Here's the classic definition that you all know and hate:
+
+        $$
+        \frac{d}{dt} f(x) = \lim_{h \rightarrow 0} \frac{f(x+h) - f(x)}{h}
+        $$
+
+        But there are two problems here:
+
+        1. What do derivatives actually mean?
+        2. We have two variables $m$ and $b$, not just one ($x$).
+
+        Let's talk about point \#1 first. A derivative is _the instantaneous slope of a function at a point_. If we approximated a nonlinear (or linear) function as a linear (straight line) model, the derivative of the original function would be the slope of the approximate model.
+
+        If we take a very small step, the amount the function changes is approximately equal to the derivative times the step size:
+
+        $$
+        \Delta f(x) \approx \frac{df(x)}{dx} \Delta x 
+        $$
+
+        If we step in the direction of the derivative, our function value goes _up_.
+
+        If we step in the direction of the _negative_ of the derivative, our function value goes _down_.
+
+        As you can guess, 
+        """)
+    ])
+
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo, np):
+    pd_dv_x = mo.ui.slider(
+        start=-np.pi,
+        stop=np.pi,
+        step=1e-1,
+        value=0.0,
+        show_value=True,
+        label="Derivative Point: ",
+    )
+
+    pd_dv_step = mo.ui.slider(
+        start=0.0,
+        stop=2.0,
+        step=1e-1,
+        value=0.0,
+        show_value=True,
+        label="Step size: ",
+    )
+
+    pd_dv_posneg = mo.ui.radio(
+        options=["Positive", "Negative"],
+        value="Positive",
+    )
+
+    pd_grid = np.linspace(-np.pi,np.pi)
+
+    mo.vstack([
+        pd_dv_x,
+        pd_dv_step,
+        pd_dv_posneg
+    ])
+
+    return pd_dv_posneg, pd_dv_step, pd_dv_x, pd_grid
+
+
+@app.cell
+def __(fs_linear, np, pd_dv_posneg, pd_dv_step, pd_dv_x, pd_grid, plt):
+    # Showing example for sin(x)
+    pd_fig_1, pd_ax_1 = plt.subplots()
+
+    pd_ax_1.set_xlim((-np.pi,np.pi))
+    pd_ax_1.set_ylim((-1.1, 1.1))
+    pd_ax_1.axhline(0, color='black')
+    pd_ax_1.axvline(0, color='black')
+    pd_ax_1.plot(pd_grid, np.sin(pd_grid), "b-")
+    pd_ax_1.plot([pd_dv_x.value, pd_dv_x.value], [0, np.sin(pd_dv_x.value)], "ro-")
+    # pd_ax_1.plot([pd_dv_x.value, pd_dv_x.value + pd_dv_step.value], [0,0], "gs-")
+    # Derivative
+    pd_ax_1.plot(pd_grid + pd_dv_x.value, np.sin(pd_dv_x.value) + fs_linear(pd_grid, np.cos(pd_dv_x.value), 0), "k--")
+
+
+    if pd_dv_posneg.value.lower() == "positive":
+        pd_new_x = pd_dv_x.value + pd_dv_step.value
+    else:
+        pd_new_x = pd_dv_x.value - pd_dv_step.value
+
+    pd_x_diff = pd_new_x - pd_dv_x.value
+
+    pd_y = np.sin(pd_dv_x.value)
+    pd_new_y = np.sin(pd_dv_x.value + pd_x_diff)
+    pd_pred_new_y = np.sin(pd_dv_x.value) + np.cos(pd_dv_x.value)*pd_x_diff
+
+    # Difference Line
+    pd_ax_1.plot(
+        [pd_dv_x.value, pd_new_x],
+        [np.sin(pd_dv_x.value), np.sin(pd_dv_x.value)],
+        "k--"
+    )
+
+    # Predicted difference
+    pd_ax_1.plot(
+        [pd_new_x, pd_new_x],
+        [pd_y, pd_pred_new_y],
+        "gx--"
+    )
+    # Actual difference
+    pd_ax_1.plot(
+        [pd_new_x, pd_new_x],
+        [pd_y, pd_new_y],
+        "r+--"
+    )
+
+    # if pd_dv_posneg.value.lower() == "positive":
+    #     print(f"This worked!")
+    #     # Predicted Difference
+    #     pd_ax_1.plot(
+    #         [pd_dv_x.value + pd_dv_step.value, pd_dv_x.value + pd_dv_step.value],
+    #         [np.sin(pd_dv_x.value), np.sin(pd_dv_x.value) + np.cos(pd_dv_x.value)*pd_dv_step.value],
+    #         "gx--"
+    #     )
+    #     # Actual Difference
+    #     pd_ax_1.plot(
+    #         [pd_dv_x.value + pd_dv_step.value, pd_dv_x.value + pd_dv_step.value],
+    #         [np.sin(pd_dv_x.value), np.sin(pd_dv_x.value + pd_dv_step.value)],
+    #         "rx--"
+    #     )
+    #     # pd_ax_1.plot([pd_dx_x.value + pd_dv_step, pd_dv_x.value + pd_dv_step], [np.sin(pd_dx_x.value), pd_dx_x.value**2], "ro")
+    #     pd_ax_1
+    # elif pd_dv_posneg.value.lower() == "negative":
+    #     pd_ax_1.plot(
+    #         [pd_dv_x.value - pd_dv_step.value, pd_dv_x.value - pd_dv_step.value],
+    #         [np.sin(pd_dv_x.value), np.sin(pd_dv_x.value) - np.cos(pd_dv_x.value)*pd_dv_step.value],
+    #         "gx--"
+    #     )
+    #     # Actual Difference
+    #     pd_ax_1.plot(
+    #         [pd_dv_x.value - pd_dv_step.value, pd_dv_x.value - pd_dv_step.value],
+    #         [np.sin(pd_dv_x.value), np.sin(pd_dv_x.value - pd_dv_step.value)],
+    #         "rx--"
+    #     )
+    #     pd_ax_1
+    # else:
+    #     print(f"Value of posneg: {pd_dv_posneg.value}")
+    return (
+        pd_ax_1,
+        pd_fig_1,
+        pd_new_x,
+        pd_new_y,
+        pd_pred_new_y,
+        pd_x_diff,
+        pd_y,
+    )
 
 
 @app.cell
