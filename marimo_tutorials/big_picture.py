@@ -169,7 +169,7 @@ def __(fs_b_slider, fs_linear, fs_m_slider, fs_x, fs_y, jnp, mo):
     return fs_error,
 
 
-@app.cell(hide_code=True)
+@app.cell
 def __(mo):
     mo.hstack([
         mo.md(r"""
@@ -219,11 +219,11 @@ def __(mo):
         \Delta f(x) \approx \frac{df(x)}{dx} \Delta x 
         $$
 
-        If we step in the direction of the derivative, our function value goes _up_.
+        If we step in the direction of the derivative, our function value goes _up_ (if the step size is small enough).
 
-        If we step in the direction of the _negative_ of the derivative, our function value goes _down_.
+        If we step in the direction of the _negative_ of the derivative, our function value goes _down_ (if the step size is small enough).
 
-        As you can guess, 
+        You can see this by playing with the sliders below.
         """)
     ])
 
@@ -243,7 +243,7 @@ def __(mo, np):
 
     pd_dv_step = mo.ui.slider(
         start=0.0,
-        stop=2.0,
+        stop=4.0,
         step=1e-1,
         value=0.0,
         show_value=True,
@@ -253,6 +253,7 @@ def __(mo, np):
     pd_dv_posneg = mo.ui.radio(
         options=["Positive", "Negative"],
         value="Positive",
+        label="Gradient step direction"
     )
 
     pd_grid = np.linspace(-np.pi,np.pi)
@@ -281,11 +282,12 @@ def __(fs_linear, np, pd_dv_posneg, pd_dv_step, pd_dv_x, pd_grid, plt):
     # Derivative
     pd_ax_1.plot(pd_grid + pd_dv_x.value, np.sin(pd_dv_x.value) + fs_linear(pd_grid, np.cos(pd_dv_x.value), 0), "k--")
 
+    grad_val = np.cos(pd_dv_x.value)
 
     if pd_dv_posneg.value.lower() == "positive":
-        pd_new_x = pd_dv_x.value + pd_dv_step.value
+        pd_new_x = pd_dv_x.value + pd_dv_step.value*grad_val
     else:
-        pd_new_x = pd_dv_x.value - pd_dv_step.value
+        pd_new_x = pd_dv_x.value - pd_dv_step.value*grad_val
 
     pd_x_diff = pd_new_x - pd_dv_x.value
 
@@ -312,39 +314,8 @@ def __(fs_linear, np, pd_dv_posneg, pd_dv_step, pd_dv_x, pd_grid, plt):
         [pd_y, pd_new_y],
         "r+--"
     )
-
-    # if pd_dv_posneg.value.lower() == "positive":
-    #     print(f"This worked!")
-    #     # Predicted Difference
-    #     pd_ax_1.plot(
-    #         [pd_dv_x.value + pd_dv_step.value, pd_dv_x.value + pd_dv_step.value],
-    #         [np.sin(pd_dv_x.value), np.sin(pd_dv_x.value) + np.cos(pd_dv_x.value)*pd_dv_step.value],
-    #         "gx--"
-    #     )
-    #     # Actual Difference
-    #     pd_ax_1.plot(
-    #         [pd_dv_x.value + pd_dv_step.value, pd_dv_x.value + pd_dv_step.value],
-    #         [np.sin(pd_dv_x.value), np.sin(pd_dv_x.value + pd_dv_step.value)],
-    #         "rx--"
-    #     )
-    #     # pd_ax_1.plot([pd_dx_x.value + pd_dv_step, pd_dv_x.value + pd_dv_step], [np.sin(pd_dx_x.value), pd_dx_x.value**2], "ro")
-    #     pd_ax_1
-    # elif pd_dv_posneg.value.lower() == "negative":
-    #     pd_ax_1.plot(
-    #         [pd_dv_x.value - pd_dv_step.value, pd_dv_x.value - pd_dv_step.value],
-    #         [np.sin(pd_dv_x.value), np.sin(pd_dv_x.value) - np.cos(pd_dv_x.value)*pd_dv_step.value],
-    #         "gx--"
-    #     )
-    #     # Actual Difference
-    #     pd_ax_1.plot(
-    #         [pd_dv_x.value - pd_dv_step.value, pd_dv_x.value - pd_dv_step.value],
-    #         [np.sin(pd_dv_x.value), np.sin(pd_dv_x.value - pd_dv_step.value)],
-    #         "rx--"
-    #     )
-    #     pd_ax_1
-    # else:
-    #     print(f"Value of posneg: {pd_dv_posneg.value}")
     return (
+        grad_val,
         pd_ax_1,
         pd_fig_1,
         pd_new_x,
@@ -352,6 +323,172 @@ def __(fs_linear, np, pd_dv_posneg, pd_dv_step, pd_dv_x, pd_grid, plt):
         pd_pred_new_y,
         pd_x_diff,
         pd_y,
+    )
+
+
+@app.cell
+def __(mo):
+    mo.vstack([
+        mo.md(r"""
+        As you might have guessed, the derivative can be used to make our error $E(\cdots)$ converge to zero. The "negative derivative" direction is the direction we need to move our parameters to make the error converge to zero.
+
+        But we have two parameters. How do we take the derivative with respect to them both?
+
+        Let's define a vector containing our parameters:
+
+        $$
+        \vec{\theta} = \begin{bmatrix}m \\ b \end{bmatrix}
+        $$
+
+        **Gradients** are a generalization of derivatives to multiple dimensions.
+
+        
+
+        """)
+    ])
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo, np):
+    # Gradient function: x^T x
+
+    pd_grad_theta = mo.ui.slider(
+        start=0,
+        stop=2*np.pi,
+        step=1e-1,
+        value=0.0,
+        show_value=True,
+        label="Directional derivative angle (radians)",
+    )
+
+    pd_unit = np.array([1,0])
+
+    def pd_xyz(theta, q):
+        x = q*np.cos(theta)
+        y = q*np.sin(theta)
+        z = np.array([x,y]) @ np.array([x,y])
+        return x,y,z
+
+    # def pd_grad
+
+    pd_grad_x_pos = mo.ui.slider(
+        start=-1,
+        stop=1,
+        step=1e-1,
+        value=0.0,
+        show_value=True,
+        label="x function point",
+    )
+
+    pd_grad_y_pos = mo.ui.slider(
+        start=-1,
+        stop=1,
+        step=1e-1,
+        value=0.0,
+        show_value=True,
+        label="y function point",
+    )
+
+    mo.vstack([
+        mo.md("Position of function evaluation"),
+        pd_grad_x_pos,
+        pd_grad_y_pos,
+        mo.md("Directional Derivative"),
+        pd_grad_theta
+    ]) 
+    return pd_grad_theta, pd_grad_x_pos, pd_grad_y_pos, pd_unit, pd_xyz
+
+
+@app.cell(hide_code=True)
+def __(np, pd_grad_theta, pd_grad_x_pos, pd_grad_y_pos, plt):
+    pd_mesh_size = 0.05
+    pd_X = np.arange(-1.1,1.1,pd_mesh_size)
+    pd_Y = np.arange(-1.1,1.1,pd_mesh_size)
+
+    pd_X, pd_Y = np.meshgrid(pd_X, pd_Y)
+
+    pd_Z = pd_X**2 + pd_Y**2
+
+    pd_fig_2, pd_ax_2 = plt.subplots(subplot_kw={"projection": "3d"})
+
+    pd_ax_2.set_xlim((-1,1))
+    pd_ax_2.set_ylim((-1,1))
+    pd_ax_2.set_zlim((0,2))
+    pd_ax_2.set_xlabel("X")
+    pd_ax_2.set_ylabel("Y")
+
+    pd_ax_2.plot_surface(pd_X, pd_Y, pd_Z, antialiased=False, alpha=0.2)
+
+    # Plot directional derivative
+    pd_ax_2.plot(
+        [-np.cos(pd_grad_theta.value) + pd_grad_x_pos.value, np.cos(pd_grad_theta.value) + pd_grad_x_pos.value],
+        [-np.sin(pd_grad_theta.value) + pd_grad_y_pos.value, np.sin(pd_grad_theta.value) + pd_grad_y_pos.value],
+        [0,0],
+        "b-"
+    )
+
+    # Plot function evaluation point
+    pd_ax_2.plot(
+        [pd_grad_x_pos.value,pd_grad_x_pos.value],
+        [pd_grad_y_pos.value,pd_grad_y_pos.value],
+        [0, pd_grad_x_pos.value**2 + pd_grad_y_pos.value**2],
+        "ro--"
+    )
+
+    # Plot directional "slice"
+    pd_grid_2 = np.linspace(-2,2)
+    pd_X_line = np.cos(pd_grad_theta.value)*pd_grid_2 + pd_grad_x_pos.value
+    pd_Y_line = np.sin(pd_grad_theta.value)*pd_grid_2 + pd_grad_y_pos.value
+    pd_Z_line = pd_X_line**2 + pd_Y_line**2
+
+    pd_ax_2.plot(
+        pd_X_line,
+        pd_Y_line,
+        pd_Z_line,
+        "r-"
+    )
+
+    # Plot directional derivative
+    pd_endpoints = np.array([-0.5,0.5])
+    pd_X_line_2 = np.cos(pd_grad_theta.value)*pd_endpoints + pd_grad_x_pos.value
+    pd_Y_line_2 = np.sin(pd_grad_theta.value)*pd_endpoints + pd_grad_y_pos.value
+    pd_grad_Z_line = (pd_grad_x_pos.value**2 + pd_grad_y_pos.value**2) + 2*pd_grad_x_pos.value*(pd_X_line_2 - pd_grad_x_pos.value) + 2*pd_grad_y_pos.value*(pd_Y_line_2 - pd_grad_y_pos.value)
+    pd_ax_2.plot(
+        pd_X_line_2,
+        pd_Y_line_2,
+        pd_grad_Z_line,
+        "k--",
+    )
+
+    pd_ax_2.plot(
+        [pd_X_line_2[0], pd_X_line_2[0]],
+        [pd_Y_line_2[0], pd_Y_line_2[0]],
+        [0, pd_grad_Z_line[0]],
+        "k--",
+    )
+    pd_ax_2.plot(
+        [pd_X_line_2[1], pd_X_line_2[1]],
+        [pd_Y_line_2[1], pd_Y_line_2[1]],
+        [0, pd_grad_Z_line[1]],
+        "k--",
+    )
+
+    return (
+        pd_X,
+        pd_X_line,
+        pd_X_line_2,
+        pd_Y,
+        pd_Y_line,
+        pd_Y_line_2,
+        pd_Z,
+        pd_Z_line,
+        pd_ax_2,
+        pd_endpoints,
+        pd_fig_2,
+        pd_grad_Z_line,
+        pd_grid_2,
+        pd_mesh_size,
     )
 
 
