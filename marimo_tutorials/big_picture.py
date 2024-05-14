@@ -197,13 +197,13 @@ def __(mo):
 @app.cell
 def __(mo):
     mo.vstack([
-        mo.md("## The Power of Derivatives"),
+        mo.md("## Derivatives, Gradients, and Jacobians"),
         mo.image("../images/vader_derivatives.jpg"),
         mo.md(r"""
         Remember derivatives from Calculus? Here's the classic definition that you all know and hate:
 
         $$
-        \frac{d}{dt} f(x) = \lim_{h \rightarrow 0} \frac{f(x+h) - f(x)}{h}
+        \frac{d}{dx} f(x) = \lim_{h \rightarrow 0} \frac{f(x+h) - f(x)}{h}
         $$
 
         But there are two problems here:
@@ -340,9 +340,14 @@ def __(mo):
         \vec{\theta} = \begin{bmatrix}m \\ b \end{bmatrix}
         $$
 
-        **Gradients** are a generalization of derivatives to multiple dimensions.
+        Notice that our error function can be written $E(\vec{\theta}, \cdots)$.
 
-        
+        **Directional derivatives** are a generalization of derivatives to higher dimensions.
+
+        **Gradients** are a special case of the directional derivative. Loosely speaking, the gradient at a point $\theta$ is the directional derivative with the steepest slope.
+
+        Use the sliders below to interact with directional derivaties for the function $f(x) = x^T x$. Use the x, y sliders to change the point at which the directional derivative is evaluated. Use the angle slider to change the directional derivative.
+        Use the checkbox to turn on the gradient, and compare the slopes of directional derivatives to that of the gradient.
 
         """)
     ])
@@ -523,6 +528,69 @@ def __(
         pd_grid_2,
         pd_mesh_size,
     )
+
+
+@app.cell
+def __(mo):
+    mo.md(r"""
+    Gradients can be computed by calculating the directional derivatives of each component of a multivariable function, and then putting those directional derivatives into a matrix.
+
+    We _could_ do this by hand. Or, we can be more pragmatic and use a programming language that supports taking gradients "automagically".
+
+    Enter JAX. JAX is essentially Numpy with three superpowers:
+
+    * Automatic Differentiation (it can take gradients for you)
+    * GPU support (to speed up super large matrix multiplications and much more)
+    * JIT compilation (so that your Python code runs fast like C++ instead of slow like....Python)
+
+    It also has one Kryptonite: it is (largely) a functional programming language. But we'll get to that later.
+
+    Check out the Python code below to practice taking gradients / derivatives with JAX.
+    """)
+    return
+
+
+@app.cell
+def __(jax, jnp):
+    # JAX matrices are similar to Numpy
+    x = jnp.array([1.0, 2.0])
+    A = jnp.array([[3.0, 4.0],[5.0, 6.0]])
+    print(f"Ax = {A @ x}")
+
+    # Define a function
+    def func1(x):
+        return x @ x
+
+    # Create a new function that calculates the gradient at any point x
+    grad_func1 = jax.grad(func1)
+
+    # Calculate the gradient at different points
+    print(f"Gradient at [0,0]: {grad_func1(jnp.array([0.0, 0.0]))}")
+    print(f"Gradient at [2,3]: {grad_func1(jnp.array([2.0, 3.0]))}")
+    print(f"Gradient at x: {grad_func1(x)}")
+
+    # Sanity check: We know the gradient should be 2*x. Are we getting the right values out?
+    return A, func1, grad_func1, x
+
+
+@app.cell
+def __(func1, jax, jnp):
+    # We can nest functions arbitrarily and take gradients.
+    def func2(x):
+        return jnp.linalg.norm(jnp.exp(-jnp.sum(jnp.sin(x)) + x**(1/3)))
+
+    grad_func2 = jax.grad(func2)
+
+    print(f"Gradient of func2: {grad_func2(jnp.array([10.0, 20.0, 30.0]))}")
+
+
+    # We can nest our own custom functions!
+
+    func3 = lambda x: func1(func2(x)*jnp.array([1,2,3.0]))
+    grad_func3 = jax.grad(func3)
+
+    print(f"Gradient of func3: {grad_func3(jnp.array([10.,20.0,30.0]))}")
+    return func2, func3, grad_func2, grad_func3
 
 
 @app.cell
