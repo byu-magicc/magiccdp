@@ -707,7 +707,7 @@ def __(jnp):
     return E,
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(mo):
     mo.vstack([
         mo.md(r"""
@@ -741,7 +741,7 @@ def __(mo):
     """),
         mo.md(r"**Exercise**: Go back to the sin function above and try to find a situation where stepping too far in the negative gradient direction might actually _increase_ your function value!").callout(kind="info"),
         mo.md(r"""
-        Below is an example of gradient descent. You can use the sliders to set the $m$ and $b$ values, and then click the `Descent Step!` button to take a gradient descent step. Watch as the line converges to interpolating the two points!
+        Below is an example of gradient descent. You can use the sliders to set the $m$ and $b$ values, and then click the `Descend!!` button to take a gradient descent step. To make it converge faster, you can set the number of steps taken every time you click the button. Watch as the line converges to interpolating the two points!
         """)
     ])
     return
@@ -751,11 +751,14 @@ def __(mo):
 def __(mo):
     get_gd_m_slider, set_gd_m_slider = mo.state(0.0)
     get_gd_b_slider, set_gd_b_slider = mo.state(0.0)
+    get_gd_step, set_gd_step = mo.state(0.1)
     return (
         get_gd_b_slider,
         get_gd_m_slider,
+        get_gd_step,
         set_gd_b_slider,
         set_gd_m_slider,
+        set_gd_step,
     )
 
 
@@ -763,16 +766,20 @@ def __(mo):
 def __(
     get_gd_b_slider,
     get_gd_m_slider,
+    get_gd_step,
     mo,
     set_gd_b_slider,
     set_gd_m_slider,
+    set_gd_step,
 ):
     gd_step_size = mo.ui.slider(
         start=0.01,
-        stop=2.0,
+        stop=0.3,
         step=1e-2,
-        value=0.1,
-        label="Step size: "
+        value=get_gd_step(),
+        on_change=set_gd_step,
+        label="Step size: ",
+        show_value=True,
     )
 
     gd_m_slider = mo.ui.slider(
@@ -782,6 +789,7 @@ def __(
         value=get_gd_m_slider(),
         on_change=set_gd_m_slider,
         label="m value (gradient descent): ",
+        show_value=True,
     )
 
     gd_b_slider = mo.ui.slider(
@@ -791,6 +799,7 @@ def __(
         value=get_gd_b_slider(),
         on_change=set_gd_b_slider,
         label="b value (gradient descent): ",
+        show_value=True,
     )
     return gd_b_slider, gd_m_slider, gd_step_size
 
@@ -818,6 +827,7 @@ def __(
     gd_step_size,
     get_gd_b_slider,
     get_gd_m_slider,
+    get_gd_step,
     jax,
     jnp,
     mo,
@@ -830,10 +840,11 @@ def __(
         for ii in range(gd_num_steps.value):
             _m = get_gd_m_slider()
             _b = get_gd_b_slider()
+            _eta = get_gd_step()
             _theta = jnp.array([_m, _b])
             _gd_gradient = grad_E(_theta, fs_x, fs_y)
-            set_gd_m_slider(_m - gd_step_size.value*float(_gd_gradient[0]))
-            set_gd_b_slider(_b - gd_step_size.value*float(_gd_gradient[1]))
+            set_gd_m_slider(_m - _eta*float(_gd_gradient[0]))
+            set_gd_b_slider(_b - _eta*float(_gd_gradient[1]))
 
         return (1-v)
 
@@ -865,6 +876,7 @@ def __(
         gd_step_size,
         gd_num_steps,
         gd_m_step_button,
+        mo.md(f"Error value: {float(E(jnp.array([get_gd_m_slider(), get_gd_b_slider()]), fs_x, fs_y))}")
     ])
     return gd_m_step_button, gd_refresh_m_b, gd_update_m_b, grad_E
 
@@ -889,8 +901,24 @@ def __(
 
 
 @app.cell
-def __(get_gd_m_slider):
-    get_gd_m_slider()
+def __(mo):
+    mo.md(r"""
+    **Success!!!** We have taught the computer how to interpolate those two points by itself.
+
+    But let's step back for a second. What we've just seen is a very simple example of an incredibly powerful principle: **We have programmed the computer to correct itself based on an error function.**
+
+    This brings us to the fundamental strategy of differentiable programming:
+
+    * Define a differentiable error function
+    * Compute a descent direction for the parameters
+    * Update the parameters in the descent direction
+    * Repeat until the error function converges to zero
+
+    Virtually all applications in differentiable programming boil down to this simple workflow.
+
+    We will see more complicated examples in later workbooks. But despite the added complexity, at the end of the day the fundamental workflow is the same.
+
+    """)
     return
 
 
