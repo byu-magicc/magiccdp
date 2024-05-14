@@ -92,7 +92,7 @@ def __(mo):
     fs_m_slider = mo.ui.slider(
         start=-5.0,
         stop=5.0,
-        step=1e-1,
+        step=1e-2,
         value=0.0,
         show_value=True,
         label="m Value: ",
@@ -101,7 +101,7 @@ def __(mo):
     fs_b_slider = mo.ui.slider(
         start=-5.0,
         stop=5.0,
-        step=1e-1,
+        step=1e-2,
         value=0.0,
         show_value=True,
         label="b Value",
@@ -707,7 +707,7 @@ def __(jnp):
     return E,
 
 
-@app.cell(hide_code=True)
+@app.cell
 def __(mo):
     mo.vstack([
         mo.md(r"""
@@ -747,7 +747,7 @@ def __(mo):
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def __(mo):
     get_gd_m_slider, set_gd_m_slider = mo.state(0.0)
     get_gd_b_slider, set_gd_b_slider = mo.state(0.0)
@@ -762,7 +762,7 @@ def __(mo):
     )
 
 
-@app.cell(hide_code=True)
+@app.cell
 def __(
     get_gd_b_slider,
     get_gd_m_slider,
@@ -804,7 +804,7 @@ def __(
     return gd_b_slider, gd_m_slider, gd_step_size
 
 
-@app.cell(hide_code=True)
+@app.cell
 def __(mo):
     gd_num_steps = mo.ui.number(
         start=1,
@@ -816,7 +816,7 @@ def __(mo):
     return gd_num_steps,
 
 
-@app.cell(hide_code=True)
+@app.cell
 def __(
     E,
     fs_x,
@@ -920,45 +920,6 @@ def __(mo):
 
     """)
     return
-
-
-@app.cell
-def __(mo):
-    mo.md(r"""
-    ---
-
-    ## Scratch Work
-    """)
-    return
-
-
-@app.cell
-def __(jnp, mo):
-    slider_k_1 = mo.ui.slider(
-        start=-10.0,
-        stop=10.0,
-        step=1e-1,
-        value=0.0,
-    )
-
-    grid = jnp.linspace(0,1)
-
-    slider_k_1
-    return grid, slider_k_1
-
-
-@app.cell
-def __(grid, jnp, plt, slider_k_1):
-    fig_x_1, ax_x_1 = plt.subplots()
-    ax_x_1.plot(grid, jnp.exp(slider_k_1.value*grid))
-
-    # plt.plot(grid, jnp.exp(slider_k_1.value*grid))
-
-    # # Interactive Below
-    # fig1, ax1 = plt.subplots()
-    # ax1.plot(grid, jnp.exp(slider_k_1.value*grid))
-    # mo.mpl.interactive(ax1)
-    return ax_x_1, fig_x_1
 
 
 if __name__ == "__main__":
