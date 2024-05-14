@@ -147,7 +147,7 @@ def __(fs_b_slider, fs_linear, fs_m_slider, fs_x, fs_y, jnp, mo):
         Tuning this by hand is a bit tricky. We also don't have a way to quantify how "wrong" we are. Let's define an error function that tracks the error in our model.
 
         Given the x-coordinates $x_1$ and $x_2$ of our two points, 
-        
+
         * The _true_ values of $y$ are $y_1$ and $y_2$. 
         * The _predicted_ values from our linear model are $f(x_1)$ and $f(x_2)$.
 
@@ -226,7 +226,6 @@ def __(mo):
         You can see this by playing with the sliders below.
         """)
     ])
-
     return
 
 
@@ -263,7 +262,6 @@ def __(mo, np):
         pd_dv_step,
         pd_dv_posneg
     ])
-
     return pd_dv_posneg, pd_dv_step, pd_dv_x, pd_grid
 
 
@@ -407,7 +405,7 @@ def __(mo, np):
         mo.md("Directional Derivative"),
         pd_grad_theta,
         pd_grad_grad_check,
-    ]) 
+    ])
     return (
         pd_grad_grad_check,
         pd_grad_theta,
@@ -510,7 +508,6 @@ def __(
         )
 
     pd_fig_2
-
     return (
         pd_X,
         pd_X_line,
@@ -681,7 +678,6 @@ def __(mo):
     """),
         mo.md("Tip: Marimo requires all variables to have unique names. If you run into problems, try appending your favorite superhero's name to the front of the variable name.").callout(kind="info")
     ])
-
     return
 
 
@@ -692,7 +688,187 @@ def __():
 
 
 @app.cell
+def __(mo):
+    mo.md(r"""
+    ## Back To Our Problem
+
+    Now that we know how to compute gradients, let's compute the gradient for our error function. The function definition is given below.
+    """)
+    return
+
+
+@app.cell
+def __(jnp):
+    def E(theta, x, y):
+        m, b = theta
+        return jnp.sum((y - (m*x+b))**2)
+
+    # Try it! Define the gradient function below.
+    return E,
+
+
+@app.cell
+def __(mo):
+    mo.vstack([
+        mo.md(r"""
+    From above, we know that the _negative_ of the gradient is a **descent direction**. If we take small steps in that direction, our function will decrease.
+
+    This leads us to the strategy of **gradient descent** (GD). This is an iterative algorithm that is used to find the _minimum_ of functions. The overall process is:
+
+    1. Compute the gradient direction $p_0 = \nabla_\theta E(theta_0, \vec{x}, \vec{y}) at our starting parameter value $\theta_0$
+    2. Take a small step in the direction of the negative gradient:
+
+        $$
+        \theta_1 = \theta_0 - \eta p_0
+        $$
+
+        (The value $\eta$ is explained below.)
+
+    3. Repeat steps 1-2 by re-computing our gradient and taking another step:
+
+        $$
+        \begin{align}
+        p_{k} &= \nabla_\theta E(\theta_k, \cdots),\\
+        \theta_{k+1} &= \theta_k - \eta p_{k}
+        \end{align}
+        $$
+
+    4. Terminate when the difference between consecutive $\theta_{k+1}$ and $\theta{k}$ values becomes "small enough"
+
+    The value $\eta > 0$ is called the **step size**. In essence this determines how large of a step we take. Remember that we don't want to take too large of steps, or else the function might change differently than we expect! 
+
+
+    """),
+        mo.md(r"**Exercise**: Go back to the sin function above and try to find a situation where stepping too far in the negative gradient direction might actually _increase_ your function value!").callout(kind="info"),
+        mo.md(r"""
+        Below is an example of gradient descent. You can use the sliders to set the $m$ and $b$ values, and then click the `Descent Step!` button to take a gradient descent step. Watch as the line converges to interpolating the two points!
+        """)
+    ])
+    return
+
+
+@app.cell
 def __():
+    return
+
+
+@app.cell
+def __(E, fs_x, fs_y, jax, jnp, mo):
+    get_gd_m_slider, set_gd_m_slider = mo.state(0.0)
+    get_gd_b_slider, set_gd_b_slider = mo.state(0.0)
+
+    gd_step_size = mo.ui.slider(
+        start=0.01,
+        stop=2.0,
+        step=1e-2,
+        value=0.1,
+        label="Step size: "
+    )
+
+    gd_m_slider = mo.ui.slider(
+        start=-5.0,
+        stop=5.0,
+        step=1e-1,
+        value=get_gd_m_slider(),
+        on_change=set_gd_m_slider,
+        label="m value (gradient descent): ",
+    )
+
+    gd_b_slider = mo.ui.slider(
+        start=-5.0,
+        stop=5.0,
+        step=1e-1,
+        value=get_gd_b_slider(),
+        on_change=set_gd_b_slider,
+        label="b value (gradient descent): ",
+    )
+
+    grad_E = jax.grad(E,argnums=0)
+
+    def gd_update_m_b(v):
+        for ii in range(gd_num_steps.value):
+            _m = get_gd_m_slider()
+            _b = get_gd_b_slider()
+            _theta = jnp.array([_m, _b])
+            _gd_gradient = grad_E(_theta, fs_x, fs_y)
+            set_gd_m_slider(_m - gd_step_size.value*float(_gd_gradient[0]))
+            set_gd_b_slider(_b - gd_step_size.value*float(_gd_gradient[1]))
+
+        return (1-v)
+
+    def gd_refresh_m_b(v):
+        set_gd_b_slider(get_gd_b_slider())
+        set_gd_m_slider(get_gd_m_slider())
+
+    gd_num_steps = mo.ui.number(
+        start=1,
+        stop=1000,
+        value=1,
+        step=1.0,
+        label="Number of steps to take (for each button click): "
+    )
+
+    gd_m_step_button = mo.ui.button(
+        value=0,
+        label="Descend!!",
+        on_click=gd_update_m_b,
+        on_change=gd_refresh_m_b,
+    )
+
+    # mo.ui.slider(
+    #     start=-5.0,
+    #     stop=5.0,
+    #     step=1e-1,
+    #     value=0.0,
+    #     show_value=True,
+    #     label="m Value: ",
+    # )
+
+    mo.vstack([
+        gd_m_slider,
+        gd_b_slider,
+        gd_step_size,
+        gd_num_steps,
+        gd_m_step_button,
+    ])
+    return (
+        gd_b_slider,
+        gd_m_slider,
+        gd_m_step_button,
+        gd_num_steps,
+        gd_refresh_m_b,
+        gd_step_size,
+        gd_update_m_b,
+        get_gd_b_slider,
+        get_gd_m_slider,
+        grad_E,
+        set_gd_b_slider,
+        set_gd_m_slider,
+    )
+
+
+@app.cell(hide_code=True)
+def __(
+    fs_grid,
+    fs_linear,
+    fs_x,
+    fs_y,
+    get_gd_b_slider,
+    get_gd_m_slider,
+    plt,
+):
+    gd_fig_1, gd_ax_1 = plt.subplots()
+    gd_ax_1.set_xlim((0,1))
+    gd_ax_1.set_ylim((0,1))
+    gd_ax_1.plot(fs_x, fs_y, "rx")
+    gd_m, gd_b = (get_gd_m_slider(), get_gd_b_slider())
+    gd_ax_1.plot(fs_grid, fs_linear(fs_grid, gd_m, gd_b), "b-")
+    return gd_ax_1, gd_b, gd_fig_1, gd_m
+
+
+@app.cell
+def __(get_gd_m_slider):
+    get_gd_m_slider()
     return
 
 
