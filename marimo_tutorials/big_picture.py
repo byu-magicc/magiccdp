@@ -390,18 +390,38 @@ def __(mo, np):
         label="y function point",
     )
 
+    pd_grad_grad_check = mo.ui.checkbox(
+        value=False,
+        label="Show gradient",
+    )
+
     mo.vstack([
         mo.md("Position of function evaluation"),
         pd_grad_x_pos,
         pd_grad_y_pos,
         mo.md("Directional Derivative"),
-        pd_grad_theta
+        pd_grad_theta,
+        pd_grad_grad_check,
     ]) 
-    return pd_grad_theta, pd_grad_x_pos, pd_grad_y_pos, pd_unit, pd_xyz
+    return (
+        pd_grad_grad_check,
+        pd_grad_theta,
+        pd_grad_x_pos,
+        pd_grad_y_pos,
+        pd_unit,
+        pd_xyz,
+    )
 
 
 @app.cell(hide_code=True)
-def __(np, pd_grad_theta, pd_grad_x_pos, pd_grad_y_pos, plt):
+def __(
+    np,
+    pd_grad_grad_check,
+    pd_grad_theta,
+    pd_grad_x_pos,
+    pd_grad_y_pos,
+    plt,
+):
     pd_mesh_size = 0.05
     pd_X = np.arange(-1.1,1.1,pd_mesh_size)
     pd_Y = np.arange(-1.1,1.1,pd_mesh_size)
@@ -474,6 +494,18 @@ def __(np, pd_grad_theta, pd_grad_x_pos, pd_grad_y_pos, plt):
         "k--",
     )
 
+    if pd_grad_grad_check.value:
+        # Positive gradient
+        pd_grad_angle = np.arctan2(pd_grad_y_pos.value, pd_grad_x_pos.value)
+        pd_ax_2.plot(
+            [pd_grad_x_pos.value, pd_grad_x_pos.value + np.cos(pd_grad_angle)],
+            [pd_grad_y_pos.value, pd_grad_y_pos.value + np.sin(pd_grad_angle)],
+            [0,0],
+            "g-"
+        )
+
+    pd_fig_2
+
     return (
         pd_X,
         pd_X_line,
@@ -487,6 +519,7 @@ def __(np, pd_grad_theta, pd_grad_x_pos, pd_grad_y_pos, plt):
         pd_endpoints,
         pd_fig_2,
         pd_grad_Z_line,
+        pd_grad_angle,
         pd_grid_2,
         pd_mesh_size,
     )
