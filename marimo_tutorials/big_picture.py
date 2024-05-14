@@ -747,16 +747,26 @@ def __(mo):
     return
 
 
-@app.cell
-def __():
-    return
-
-
-@app.cell
-def __(E, fs_x, fs_y, jax, jnp, mo):
+@app.cell(hide_code=True)
+def __(mo):
     get_gd_m_slider, set_gd_m_slider = mo.state(0.0)
     get_gd_b_slider, set_gd_b_slider = mo.state(0.0)
+    return (
+        get_gd_b_slider,
+        get_gd_m_slider,
+        set_gd_b_slider,
+        set_gd_m_slider,
+    )
 
+
+@app.cell(hide_code=True)
+def __(
+    get_gd_b_slider,
+    get_gd_m_slider,
+    mo,
+    set_gd_b_slider,
+    set_gd_m_slider,
+):
     gd_step_size = mo.ui.slider(
         start=0.01,
         stop=2.0,
@@ -782,7 +792,38 @@ def __(E, fs_x, fs_y, jax, jnp, mo):
         on_change=set_gd_b_slider,
         label="b value (gradient descent): ",
     )
+    return gd_b_slider, gd_m_slider, gd_step_size
 
+
+@app.cell(hide_code=True)
+def __(mo):
+    gd_num_steps = mo.ui.number(
+        start=1,
+        stop=1000,
+        value=1,
+        step=1.0,
+        label="Number of steps to take (for each button click): "
+    )
+    return gd_num_steps,
+
+
+@app.cell(hide_code=True)
+def __(
+    E,
+    fs_x,
+    fs_y,
+    gd_b_slider,
+    gd_m_slider,
+    gd_num_steps,
+    gd_step_size,
+    get_gd_b_slider,
+    get_gd_m_slider,
+    jax,
+    jnp,
+    mo,
+    set_gd_b_slider,
+    set_gd_m_slider,
+):
     grad_E = jax.grad(E,argnums=0)
 
     def gd_update_m_b(v):
@@ -800,13 +841,7 @@ def __(E, fs_x, fs_y, jax, jnp, mo):
         set_gd_b_slider(get_gd_b_slider())
         set_gd_m_slider(get_gd_m_slider())
 
-    gd_num_steps = mo.ui.number(
-        start=1,
-        stop=1000,
-        value=1,
-        step=1.0,
-        label="Number of steps to take (for each button click): "
-    )
+
 
     gd_m_step_button = mo.ui.button(
         value=0,
@@ -831,20 +866,7 @@ def __(E, fs_x, fs_y, jax, jnp, mo):
         gd_num_steps,
         gd_m_step_button,
     ])
-    return (
-        gd_b_slider,
-        gd_m_slider,
-        gd_m_step_button,
-        gd_num_steps,
-        gd_refresh_m_b,
-        gd_step_size,
-        gd_update_m_b,
-        get_gd_b_slider,
-        get_gd_m_slider,
-        grad_E,
-        set_gd_b_slider,
-        set_gd_m_slider,
-    )
+    return gd_m_step_button, gd_refresh_m_b, gd_update_m_b, grad_E
 
 
 @app.cell(hide_code=True)
