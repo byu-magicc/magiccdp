@@ -590,7 +590,110 @@ def __(func1, jax, jnp):
     grad_func3 = jax.grad(func3)
 
     print(f"Gradient of func3: {grad_func3(jnp.array([10.,20.0,30.0]))}")
-    return func2, func3, grad_func2, grad_func3
+
+
+    # If a function has multiple arguments, we can specify which arguments we want the gradient with respect to using the `argnums` keyword.
+
+    def func4(x,y):
+        return jnp.sin(x) @ jnp.cos(y)
+
+    grad_func4_x = jax.grad(func4, argnums=0)
+
+    print(f"Gradient of func4 w.r.t. x: {grad_func4_x(jnp.array([1,2.0]), jnp.array([3.0, 4.0]))}")
+
+    # Try it! Can you compute the gradient of func4 with respect to y?
+
+    # PUT YOUR CODE HERE
+    return func2, func3, func4, grad_func2, grad_func3, grad_func4_x
+
+
+@app.cell
+def __(mo):
+    mo.md(r"""
+    Try computing the gradient of the following function using the vector $[1.0, 2.0, 3.0]$. What happens?
+    """)
+    return
+
+
+@app.cell
+def __():
+    def func5(x):
+        return 10*x
+
+    # Your code here!
+    return func5,
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""
+    An error occurred! JAX should have output something similar to the following:
+
+    ```python
+    TypeError: Gradient only defined for scalar-output functions. Output had shape: (3,).
+    ```
+
+    The problem is that gradients are only defined for functions with a _scalar_ output. The function above had a _vector_ output. What does it mean to take the derivative of a vector?
+
+    Gradients are a special case of something called **Jacobian matrices**. If your function has $n$ output entries, a Jacobian essentially takes the gradient of each entry and stacks all the gradients into a matrix.
+
+    See the following code cells for computing the Jacobian with JAX!
+
+    """)
+    return
+
+
+@app.cell
+def __(func5, jax, jnp):
+    # Use jax.jacobian instead of jax.grad to compute Jacobian matrices
+
+    jac_func5 = jax.jacobian(func5)
+    print(f"Jacobian of func5: \n{jac_func5(jnp.array([1.0, 2.0, 3.0]))}")
+
+
+
+    # Just like jax.grad, we can compute jacobians with respect to specific arguments. Just use the `argnums` keyword argument.
+    # For example, let's multiply a matrix by a vector!
+    def func6(W,x):
+        return W @ x
+
+    # Try it: Compute the Jacobian of func6 with respect to x!
+
+    # Try it: Compute the Jacobian of func6 with respect to the matrix W!
+    return func6, jac_func5
+
+
+@app.cell
+def __(mo):
+    mo.vstack([
+        mo.md(r"""
+    JAX can handle all sorts of derivatives, gradients, Jacobians, and beyond. For example:
+
+    * Jacobian of a scalar w.r.t. a scalar (derivative)
+    * Jacobian of a vector w.r.t. a vector
+    * Jacobian of a matrix w.r.t. a matrix
+    * Jacobian of a tensor (multi-dimensional array) w.r.t. a tensor
+    * Jacobian of a vector w.r.t. a matrix
+    * Jacobian of a scalar w.r.t. a tensor
+    * ...and so on.
+
+    In the next cell, try defining some crazy functions and taking the Jacobian!
+    """),
+        mo.md("Tip: Marimo requires all variables to have unique names. If you run into problems, try appending your favorite superhero's name to the front of the variable name.").callout(kind="info")
+    ])
+
+    return
+
+
+@app.cell
+def __():
+    # Go crazy :)
+    return
+
+
+@app.cell
+def __():
+    return
 
 
 @app.cell
