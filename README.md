@@ -2,7 +2,7 @@
 
 ## Installation Instructions
 
-* Create a Mamba environment with Python 12
+* Create a [Mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) environment with Python 12
 
 ```bash
 mamba create -n magiccdp python=3.12
@@ -20,4 +20,10 @@ mamba activate magiccdp
 pip install -e .
 ```
 
-**Note:** The `-e` option stands for "editable". It allows you to change the code in the folder and run those changes immediately. Don't leave this out!
+(**Note:** The `-e` option stands for "editable". It allows you to change the code in the folder and run those changes immediately. Don't leave this out!)
+
+* Run the notebook using `marimo edit <notebook-name>`. For example,
+
+```bash
+marimo edit marimo_tutorials/big_picture.py
+```
