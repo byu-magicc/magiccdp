@@ -157,15 +157,15 @@ def clip_gains(system: PIDSystem):
     Keeps the gains within the specified ranges below.
     Useful for, e.g., preventing gains from going negative.
     """
-    kp = jnp.clip(system.kp, 0.01, 10.0)
+    kp = jnp.clip(system.kp, 0.01, 30.0)
     ki = jnp.clip(system.ki, 0.0, 30.0)
-    kd = jnp.clip(system.kd, 0.0, 30.0)
+    kd = jnp.clip(system.kd, 0.0, 500.0)
 
     return PIDSystem(kp=kp, ki=ki, kd=kd, dyn_num=system.dyn_num, dyn_denom=system.dyn_denom)
 
 
 
-def make_PIDSystem(kp, ki, kd):
+def make_single_arm_system(kp, ki, kd):
     m = 0.5
     b = 0.01
     l = 0.3
@@ -180,13 +180,33 @@ def make_PIDSystem(kp, ki, kd):
     )
 
 
+def make_ball_and_beam_system(kp, ki, kd):
+    m = 0.111
+    R = 0.015
+    g = -9.8
+    L = 1.0
+    d = 0.03
+    J = 9.99e-6
+
+    return PIDSystem(
+        kp=jnp.array([kp]).reshape(-1),
+        ki=jnp.array([ki]).reshape(-1),
+        kd=jnp.array([kd]).reshape(-1),
+        dyn_num=[-m*g*d],
+        dyn_denom=[L*(J/R**2 + m), 0, 0]
+    )
+
+
+
+
 
 if __name__ == "__main__":
 
     T1 = 35.0
     RESOLUTION = 1000
 
-    system = make_PIDSystem(0.18, 0.0, 0.095)
+    # system = make_single_arm_system(0.18, 0.0, 0.095)
+    system = make_ball_and_beam_system(0.1, 0.1, 0.1)
 
     ref = 1.0
     A, B, C, D = system._statespace()
@@ -214,7 +234,7 @@ if __name__ == "__main__":
         step_fn = make_step(opt, loss)
 
         # Gradient descent loop
-        for ii in range(100):
+        for ii in range(1000):
             value, system, opt_state = step_fn(system, opt_state, x0, ref)
             system = clip_gains(system)
             if ii % 10 == 0:
@@ -224,8 +244,8 @@ if __name__ == "__main__":
         _, _, C, D = system._statespace()
         y = (C @ sol.ys.T).T + D * ref
 
-        plt.plot(sol.ts, y)
-        plt.plot(sol.ts, jnp.ones_like(sol.ts) * ref)
+        plt.plot(sol.ts, y, "b-")
+        plt.plot(sol.ts, jnp.ones_like(sol.ts) * ref, "r--")
         plt.show()
 
         # Use the terminal command `python -i pid.py` to inspect the final gains
