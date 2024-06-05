@@ -146,11 +146,20 @@ def make_step(opt, loss_fn):
     @eqx.filter_jit
     def step(system, opt_state, x0, ref):
         value, grads = loss_fn(system, x0, ref)
-        updates, opt_state = opt.update(grads, opt_state)
+        updates, opt_state = opt.update(grads, opt_state, system)
         system = eqx.apply_updates(system, updates)
         return value, system, opt_state
 
     return step
+
+
+def clip_gains(system: PIDSystem):
+    kp = jnp.clip(system.kp, 0.01, 10.0)
+    ki = jnp.clip(system.ki, 0.0, 30.0)
+    kd = jnp.clip(system.kd, 0.0, 30.0)
+
+    return PIDSystem(kp=kp, ki=ki, kd=kd, dyn_num=system.dyn_num, dyn_denom=system.dyn_denom)
+
 
 
 
@@ -161,26 +170,30 @@ if __name__ == "__main__":
     l = 0.3
     g = 9.8
 
-    T1 = 60.0
+    T1 = 5.0
     RESOLUTION = 500
 
     single_arm = PIDSystem(
-        kp=jnp.array([0.01]),
-        ki=jnp.array([0.01]),
+        kp=jnp.array([1.0]),
+        # kp=0.1,
+        ki=jnp.array([0.095]),
         # kd=0.095,
-        kd=jnp.array([0.1]),
+        kd=jnp.array([1.0]),
         # Tf=1.0,
         dyn_num=[3/(m*l**2)],
         dyn_denom=[1.0, 3*b/(m*l**2), 0.0]
     )
 
+
+    system = single_arm
+
     ref = 1.0
-    A, B, C, D = single_arm._statespace()
+    A, B, C, D = system._statespace()
     x0 = jnp.zeros(A.shape[0])
 
     pdb.set_trace() if sys.flags.debug else None
 
-    sol = solve(single_arm, x0, ref, t1=T1, resolution=RESOLUTION)
+    sol = solve(system, x0, ref, t1=T1, resolution=RESOLUTION)
 
     y = (C @ sol.ys.T).T + D * ref
 
@@ -192,26 +205,32 @@ if __name__ == "__main__":
 
     if True:
 
-        lr = 1e-5
-        opt = optax.sgd(learning_rate=lr)
+        lr = 1e-4
+        opt = optax.sgd(learning_rate=lr, momentum=0.9, nesterov=True)
+        # opt = optax.adamw(learning_rate=lr)
         opt_state = opt.init(single_arm)
 
-        loss = make_loss(single_arm, t1=T1, resolution=500)
+        loss = make_loss(system, t1=T1, resolution=500)
         step_fn = make_step(opt, loss)
 
 
         pdb.set_trace() if sys.flags.debug else None
 
-        for ii in range(2000):
-            value, single_arm, opt_state = step_fn(single_arm, opt_state, x0, ref)
+        for ii in range(10000):
+            value, system, opt_state = step_fn(system, opt_state, x0, ref)
+            system = clip_gains(system)
             if ii % 10 == 0:
                 print(f"Loss at Step {ii}: {value}")
     
-        sol = solve(single_arm, x0, ref, t1=T1, resolution=RESOLUTION)
-        _, _, C, D = single_arm._statespace()
+        sol = solve(system, x0, ref, t1=T1, resolution=RESOLUTION)
+        _, _, C, D = system._statespace()
         y = (C @ sol.ys.T).T + D * ref
 
         plt.plot(sol.ts, y)
         plt.plot(sol.ts, jnp.ones_like(sol.ts) * ref)
         plt.show()
+
+        kp_final = system.kp
+        ki_final = system.ki
+        kd_final = system.kd
 
