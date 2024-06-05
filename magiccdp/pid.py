@@ -24,7 +24,7 @@ class PIDSystem(eqx.Module):
     kp: Array | float
     ki: Array | float
     kd: Array | float
-    Tf: Array | float # For approximation of derivative TF; see https://www.cds.caltech.edu/~murray/courses/cds101/fa04/caltech/am04_ch8-3nov04.pdf
+    # Tf: Array | float # For approximation of derivative TF; see https://www.cds.caltech.edu/~murray/courses/cds101/fa04/caltech/am04_ch8-3nov04.pdf
     dyn_num: list[float]
     dyn_denom: list[float]
 
@@ -32,14 +32,14 @@ class PIDSystem(eqx.Module):
         kp: Array | float,
         ki: Array | float,
         kd: Array | float,
-        Tf: Array | float,
+        # Tf: Array | float,
         dyn_num: list[float],
         dyn_denom: list[float]
     ):
         self.kp = kp
         self.ki = ki
         self.kd = kd
-        self.Tf = Tf
+        # self.Tf = Tf
         self.dyn_num = dyn_num
         self.dyn_denom = dyn_denom
 
@@ -47,10 +47,13 @@ class PIDSystem(eqx.Module):
         kp = self.kp
         ki = self.ki
         kd = self.kd
-        Tf = self.Tf
+        # Tf = self.Tf
 
-        pid_num = jnp.array([kp*Tf + kd, kp + ki*Tf, ki])
-        pid_denom = jnp.array([Tf, 1.0, 0])
+        # pid_num = jnp.array([kp*Tf + kd, kp + ki*Tf, ki])
+        # pid_denom = jnp.array([Tf, 1.0, 0])
+
+        pid_num = jnp.array([kd, kp, ki])
+        pid_denom = jnp.array([1.0, 0])
 
         dyn_num = jnp.array(self.dyn_num)
         dyn_denom = jnp.array(self.dyn_denom)
@@ -59,6 +62,8 @@ class PIDSystem(eqx.Module):
         lead_coeff = denom[0]
         denom = denom/lead_coeff
         num = jnp.polymul(dyn_num, pid_num) / lead_coeff
+
+        polydiv = jnp.polydiv
 
         return num, denom
         
@@ -113,9 +118,9 @@ def solve(system: PIDSystem, x0: Array, ref: float, t1=1.0):
         dt0=0.01,
         y0=x0,
         args={'ref': ref},
-        saveat=SaveAt(ts=jnp.linspace(0.0, t1, 100)),
+        saveat=SaveAt(ts=jnp.linspace(0.0, t1, 1000)),
         max_steps=10000,
-        stepsize_controller=PIDController(rtol=1e-5, atol=1e-5),
+        # stepsize_controller=PIDController(rtol=1e-5, atol=1e-5),
     )
     return sol
 
@@ -154,10 +159,11 @@ if __name__ == "__main__":
     g = 9.8
 
     single_arm = PIDSystem(
-        kp=0.18,
-        ki=0.0,
-        kd=0.095,
-        Tf=1.0,
+        kp=0.01,
+        ki=0.01,
+        # kd=0.095,
+        kd=0.1,
+        # Tf=1.0,
         dyn_num=[3/(m*l**2)],
         dyn_denom=[1.0, 3*b/(m*l**2), 0.0]
     )
@@ -168,12 +174,13 @@ if __name__ == "__main__":
 
     pdb.set_trace() if sys.flags.debug else None
 
-    sol = solve(single_arm, x0, ref, t1=2.0)
+    sol = solve(single_arm, x0, ref, t1=60.0)
 
     y = (C @ sol.ys.T).T + D * ref
 
 
     plt.plot(sol.ts, y)
+    plt.plot(sol.ts, jnp.ones_like(sol.ts) * ref)
     plt.show()
 
 
