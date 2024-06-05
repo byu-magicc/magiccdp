@@ -11,6 +11,10 @@ import equinox as eqx
 from diffrax import diffeqsolve, ODETerm, Tsit5, SaveAt, PIDController
 import optax
 
+import sys
+if sys.flags.debug:
+    import pdb
+
 
 class PIDSystem(eqx.Module):
     """
@@ -80,23 +84,28 @@ class PIDSystem(eqx.Module):
         ))
 
 
-        B = jnp.array([[0.0, 1.0]]).T
-        C = jnp.flip(num)
+        B = jnp.hstack((
+            jnp.zeros((1, len(denom)-1)),
+            jnp.array([[1]])
+        )).reshape(-1)
+        C = jnp.flip(jnp.hstack((jnp.zeros((len(denom) - len(num))), num)))
 
         return A, B, C, D
 
 
     def __call__(self, t, x, params):
-        A, B, _, _ = self._statespace()
+        A, B, C, D = self._statespace()
 
-        err = params['ref'] - x
+        y = C @ x + D * params['ref']
+        err = params['ref'] - y
 
-        return A @ x + B @ err
+        return A @ x + B * err
 
 
-def solve(x0: Array, ref: float, system: PIDSystem, t1=1.0):
+def solve(system: PIDSystem, x0: Array, ref: float, t1=1.0):
+    terms = ODETerm(system)
     sol = diffeqsolve(
-        terms=ODETerm(system),
+        terms=terms,
         solver=Tsit5(),
         t0=0.0,
         t1=t1,
@@ -116,8 +125,8 @@ def make_loss(system):
 
     @eqx.filter_value_and_grad
     def loss(system, x0, ref):
-        sol = solve(x0, ref, system)
-        y = C @ sol.ys + D * ref
+        sol = solve(system, x0, ref)
+        y = C @ sol.ys.T + D * ref
         return jnp.sum((y - ref)**2)
 
     return loss
@@ -152,17 +161,22 @@ if __name__ == "__main__":
         dyn_denom=[1.0, 3*b/(m*l**2), 0.0]
     )
 
+
     lr = 1e-3
     opt = optax.sgd(learning_rate=lr)
+    opt_state = opt.init(single_arm)
 
     loss = make_loss(single_arm)
     step_fn = make_step(opt, loss)
 
     ref = 1.0
-    x0 = jnp.array([0.0, 0.0])
+    A, B, C, D = single_arm._statespace()
+    x0 = jnp.zeros(A.shape[0])
+
+    pdb.set_trace() if sys.flags.debug else None
 
     for ii in range(100):
-        value, single_arm, opt_state = step_fn(single_arm, opt.init(single_arm), x0, ref)
+        value, single_arm, opt_state = step_fn(single_arm, opt_state, x0, ref)
         print(f"Loss at Step {ii}: {value}")
     
 
