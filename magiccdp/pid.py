@@ -87,18 +87,18 @@ class PIDSystem(eqx.Module):
 
         A = jnp.vstack((
             jnp.hstack((
-                jnp.zeros((len(denom)-1, 1)),
-                jnp.eye(len(denom)-1)
+                jnp.zeros((len(denom)-2, 1)),
+                jnp.eye(len(denom)-2)
             )),
-            -jnp.flip(denom)
+            -jnp.flip(denom[1:])
         ))
 
 
         B = jnp.hstack((
-            jnp.zeros((1, len(denom)-1)),
+            jnp.zeros((1, len(denom)-2)),
             jnp.array([[1]])
         )).reshape(-1)
-        C = jnp.flip(jnp.hstack((jnp.zeros((len(denom) - len(num))), num)))
+        C = jnp.flip(jnp.hstack((jnp.zeros((len(denom) - len(num)-1)), num)))
 
         return A, B, C, D
 
@@ -219,19 +219,19 @@ if __name__ == "__main__":
     l = 0.3
     g = 9.8
 
-    T1 = 5.0
-    RESOLUTION = 500
+    T1 = 35.0
+    RESOLUTION = 1000
 
-    single_arm = make_PIDSystem(1.0, 0.095, 1.0)
+    single_arm = make_PIDSystem(0.18, 1.0, 0.095)
     motor_pos = make_MotorSystem(10.0, 0.0, 0.0)
     pendulum = make_pendulum(1.0, 0.1, 0.0)
 
-    system = pendulum
+    system = single_arm
 
-    ref = 0.0
+    ref = 1.0
     A, B, C, D = system._statespace()
     x0 = jnp.zeros(A.shape[0])
-    x0 = x0.at[0].set(0.1)
+    # x0 = x0.at[1].set(0.1)
 
     pdb.set_trace() if sys.flags.debug else None
 
