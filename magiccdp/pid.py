@@ -55,7 +55,6 @@ class PIDSystem(eqx.Module):
         self.dyn_num = dyn_num
         self.dyn_denom = dyn_denom
 
-
     def _num_denom(self):
         kp = self.kp
         ki = self.ki
