@@ -162,6 +162,55 @@ def clip_gains(system: PIDSystem):
 
 
 
+def make_PIDSystem(kp, ki, kd):
+    m = 0.5
+    b = 0.01
+    l = 0.3
+    g = 9.8
+
+    return PIDSystem(
+        kp=jnp.array([kp]).reshape(-1),
+        # kp=0.1,
+        ki=jnp.array([ki]).reshape(-1),
+        # kd=0.095,
+        kd=jnp.array([kd]).reshape(-1),
+        # Tf=1.0,
+        dyn_num=[3/(m*l**2)],
+        dyn_denom=[1.0, 3*b/(m*l**2), 0.0]
+    )
+
+
+def make_MotorSystem(kp, ki, kd):
+    J = 3.2284e-6
+    b = 3.5077e-6
+    K = 0.0274
+    R = 4
+    L = 2.75e-6
+
+    return PIDSystem(
+        kp=jnp.array([kp]).reshape(-1),
+        ki=jnp.array([ki]).reshape(-1),
+        kd=jnp.array([kd]).reshape(-1),
+        dyn_num=[K],
+        dyn_denom=[J*L, J*R+L*b, R*b+K**2, 0.0]
+    )
+
+
+def make_pendulum(kp, ki, kd):
+    m = 0.5
+    b = 0.01
+    l = 0.3
+    g = 9.8
+
+    return PIDSystem(
+        kp=jnp.array([kp]).reshape(-1),
+        ki=jnp.array([ki]).reshape(-1),
+        kd=jnp.array([kd]).reshape(-1),
+        dyn_num=[1],
+        dyn_denom=[1.0, 0, -9]
+    )
+    
+
 
 if __name__ == "__main__":
 
@@ -173,23 +222,16 @@ if __name__ == "__main__":
     T1 = 5.0
     RESOLUTION = 500
 
-    single_arm = PIDSystem(
-        kp=jnp.array([1.0]),
-        # kp=0.1,
-        ki=jnp.array([0.095]),
-        # kd=0.095,
-        kd=jnp.array([1.0]),
-        # Tf=1.0,
-        dyn_num=[3/(m*l**2)],
-        dyn_denom=[1.0, 3*b/(m*l**2), 0.0]
-    )
+    single_arm = make_PIDSystem(1.0, 0.095, 1.0)
+    motor_pos = make_MotorSystem(10.0, 0.0, 0.0)
+    pendulum = make_pendulum(1.0, 0.1, 0.0)
 
+    system = pendulum
 
-    system = single_arm
-
-    ref = 1.0
+    ref = 0.0
     A, B, C, D = system._statespace()
     x0 = jnp.zeros(A.shape[0])
+    x0 = x0.at[0].set(0.1)
 
     pdb.set_trace() if sys.flags.debug else None
 
@@ -203,7 +245,7 @@ if __name__ == "__main__":
     plt.show()
 
 
-    if True:
+    if False:
 
         lr = 1e-4
         opt = optax.sgd(learning_rate=lr, momentum=0.9, nesterov=True)
