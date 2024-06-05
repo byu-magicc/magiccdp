@@ -197,6 +197,12 @@ def make_ball_and_beam_system(kp, ki, kd):
     )
 
 
+# # Plotting Functions
+# # By Cameron Stoker, with some modifications
+
+def plot_init(line):
+    line.set_data([], [])
+    return line
 
 
 
