@@ -127,7 +127,7 @@ def make_loss(system):
     @eqx.filter_value_and_grad
     def loss(system, x0, ref):
         sol = solve(system, x0, ref)
-        y = C @ sol.ys.T + D * ref
+        y = (C @ sol.ys.T).T + D * ref
         return jnp.sum((y - ref)**2)
 
     return loss
@@ -154,10 +154,10 @@ if __name__ == "__main__":
     g = 9.8
 
     single_arm = PIDSystem(
-        kp=1.0,
-        ki=1.0,
-        kd=1.0,
-        Tf=0.01,
+        kp=0.1,
+        ki=0.0,
+        kd=0.0,
+        Tf=1.0,
         dyn_num=[3/(m*l**2)],
         dyn_denom=[1.0, 3*b/(m*l**2), 0.0]
     )
@@ -166,10 +166,13 @@ if __name__ == "__main__":
     A, B, C, D = single_arm._statespace()
     x0 = jnp.zeros(A.shape[0])
 
-    sol = solve(single_arm, x0, ref)
+    sol = solve(single_arm, x0, ref, t1=10.0)
+
+    y = (C @ sol.ys.T).T + D * ref
 
 
-    plt.plot(sol.ts, sol.ys)
+    plt.plot(sol.ts, y)
+    plt.show()
 
 
     if False:
