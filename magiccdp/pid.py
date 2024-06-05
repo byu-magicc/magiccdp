@@ -10,6 +10,7 @@ from jax import Array
 import equinox as eqx
 from diffrax import diffeqsolve, ODETerm, Tsit5, SaveAt, PIDController
 import optax
+import matplotlib.pyplot as plt
 
 import sys
 if sys.flags.debug:
@@ -51,10 +52,13 @@ class PIDSystem(eqx.Module):
         pid_num = jnp.array([kp*Tf + kd, kp + ki*Tf, ki])
         pid_denom = jnp.array([Tf, 1.0, 0])
 
-        denom = jnp.polymul(pid_denom, jnp.array(self.dyn_denom))
+        dyn_num = jnp.array(self.dyn_num)
+        dyn_denom = jnp.array(self.dyn_denom)
+
+        denom = jnp.polyadd(jnp.polymul(dyn_denom, pid_denom), jnp.polymul(dyn_num, pid_denom))
         lead_coeff = denom[0]
         denom = denom/lead_coeff
-        num = jnp.polymul(pid_num, jnp.array(self.dyn_num)) / lead_coeff
+        num = jnp.polymul(dyn_num, pid_num) / lead_coeff
 
         return num, denom
         
@@ -96,10 +100,7 @@ class PIDSystem(eqx.Module):
     def __call__(self, t, x, params):
         A, B, C, D = self._statespace()
 
-        y = C @ x + D * params['ref']
-        err = params['ref'] - y
-
-        return A @ x + B * err
+        return A @ x + B * params['ref']
 
 
 def solve(system: PIDSystem, x0: Array, ref: float, t1=1.0):
@@ -161,22 +162,30 @@ if __name__ == "__main__":
         dyn_denom=[1.0, 3*b/(m*l**2), 0.0]
     )
 
-
-    lr = 1e-3
-    opt = optax.sgd(learning_rate=lr)
-    opt_state = opt.init(single_arm)
-
-    loss = make_loss(single_arm)
-    step_fn = make_step(opt, loss)
-
     ref = 1.0
     A, B, C, D = single_arm._statespace()
     x0 = jnp.zeros(A.shape[0])
 
-    pdb.set_trace() if sys.flags.debug else None
+    sol = solve(single_arm, x0, ref)
 
-    for ii in range(100):
-        value, single_arm, opt_state = step_fn(single_arm, opt_state, x0, ref)
-        print(f"Loss at Step {ii}: {value}")
+
+    plt.plot(sol.ts, sol.ys)
+
+
+    if False:
+
+        lr = 1e-3
+        opt = optax.sgd(learning_rate=lr)
+        opt_state = opt.init(single_arm)
+
+        loss = make_loss(single_arm)
+        step_fn = make_step(opt, loss)
+
+
+        pdb.set_trace() if sys.flags.debug else None
+
+        for ii in range(100):
+            value, single_arm, opt_state = step_fn(single_arm, opt_state, x0, ref)
+            print(f"Loss at Step {ii}: {value}")
     
 
