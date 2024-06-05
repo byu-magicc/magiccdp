@@ -1,0 +1,55 @@
+
+# ==========
+# coding
+# ==========
+
+.mypy_cache/
+__pycache__/
+*.pyc
+*.npy
+*.py[cod]
+*$py.class
+
+# ==========
+# pip
+# ==========
+
+*.egg-info/
+
+# ==========
+# operating systems
+# ==========
+
+.DS_Store
+__MACOSX/
+
+~$*
+~$*.*
+
+# ==========
+# ide
+# ==========
+
+.vscode/
+.vs/
+x64/
+*.vcxproj*
+
+.idea/
+
+# ==========
+# generated docs
+# ==========
+
+*.dox
+*.wikidoc
+
+# ==========
+# generic tmp
+# ==========
+
+*~
+*.*~
+
+*.swp
+

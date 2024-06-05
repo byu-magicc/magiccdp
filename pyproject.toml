@@ -5,7 +5,7 @@ authors = [
 ]
 description="A set of differentiable programming tutorials for the BYU MAGICC Lab"
 readme="README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 # license = GPL?
 
 dependencies = [
@@ -21,7 +21,7 @@ dynamic = [
 ]
 
 # These are optional dependencies.
-# You can install the `dev` dependencies 
+# You can install the `dev` dependencies
 # by running `pip install -e .[dev]`
 [project.optional-dependencies]
 dev = [
