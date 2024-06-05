@@ -225,7 +225,7 @@ if __name__ == "__main__":
     T1 = 1.0
     RESOLUTION = 1000
 
-    system = make_single_arm_system(76.0, 0.5, 30.0)
+    system = make_single_arm_system(0.1, 0.1, 0.1)
     # system = make_ball_and_beam_system(0.1, 0.1, 0.1)
 
     ref = 1.0
@@ -243,7 +243,7 @@ if __name__ == "__main__":
     plt.show()
 
 
-    if False:
+    if True:
 
         lr = 1e-4
         opt = optax.sgd(learning_rate=lr, momentum=0.9, nesterov=True)
