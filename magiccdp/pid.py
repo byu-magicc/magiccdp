@@ -55,7 +55,7 @@ class PIDSystem(eqx.Module):
         dyn_num = jnp.array(self.dyn_num)
         dyn_denom = jnp.array(self.dyn_denom)
 
-        denom = jnp.polyadd(jnp.polymul(dyn_denom, pid_denom), jnp.polymul(dyn_num, pid_denom))
+        denom = jnp.polyadd(jnp.polymul(dyn_denom, pid_denom), jnp.polymul(dyn_num, pid_num))
         lead_coeff = denom[0]
         denom = denom/lead_coeff
         num = jnp.polymul(dyn_num, pid_num) / lead_coeff
@@ -154,9 +154,9 @@ if __name__ == "__main__":
     g = 9.8
 
     single_arm = PIDSystem(
-        kp=0.1,
+        kp=0.18,
         ki=0.0,
-        kd=0.0,
+        kd=0.095,
         Tf=1.0,
         dyn_num=[3/(m*l**2)],
         dyn_denom=[1.0, 3*b/(m*l**2), 0.0]
@@ -166,7 +166,9 @@ if __name__ == "__main__":
     A, B, C, D = single_arm._statespace()
     x0 = jnp.zeros(A.shape[0])
 
-    sol = solve(single_arm, x0, ref, t1=10.0)
+    pdb.set_trace() if sys.flags.debug else None
+
+    sol = solve(single_arm, x0, ref, t1=2.0)
 
     y = (C @ sol.ys.T).T + D * ref
 
