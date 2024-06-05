@@ -8,10 +8,11 @@ Contributors: James Usevitch (james_usevitch@byu.edu)
 
 import jax
 jax.config.update('jax_platform_name', 'cpu') # Sets the default device to CPU
+jax.config.update("jax_enable_x64", True) # Enables 64 bit precision
 import jax.numpy as jnp
 from jax import Array
 import equinox as eqx
-from diffrax import diffeqsolve, ODETerm, Tsit5, SaveAt, PIDController
+from diffrax import diffeqsolve, ODETerm, Tsit5, SaveAt, PIDController, Dopri5, Kvaerno3, Kvaerno4, Kvaerno5
 import optax
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
@@ -108,10 +109,23 @@ class PIDSystem(eqx.Module):
 
 
 def solve(system: PIDSystem, x0: Array, ref: float, t1=1.0, resolution=1000):
+    """
+    Solves the ODE.
+
+    Make sure 64-bit precision is enabled for best results.
+
+    NOTE: For non-stiff (i.e. "normal") systems, use Tsit5() or Dopri5() as the solver.
+    If you are having numerical issues or your system is stiff, use an adaptive step size
+    (diffrax.PIDController) and try using Kvaerno3(),
+    Kvaerno4(), or Kvaerno5().
+
+    See the diffrax documentation for more information:
+    https://docs.kidger.site/diffrax/usage/how-to-choose-a-solver/
+    """
     terms = ODETerm(system)
     sol = diffeqsolve(
         terms=terms,
-        solver=Tsit5(),
+        solver=Kvaerno3(),
         t0=0.0,
         t1=t1,
         dt0=0.01,
@@ -119,7 +133,7 @@ def solve(system: PIDSystem, x0: Array, ref: float, t1=1.0, resolution=1000):
         args={'ref': ref},
         saveat=SaveAt(ts=jnp.linspace(0.0, t1, resolution)),
         max_steps=10000,
-        # stepsize_controller=PIDController(rtol=1e-5, atol=1e-5),
+        stepsize_controller=PIDController(rtol=1e-5, atol=1e-5),
     )
     return sol
 
@@ -208,11 +222,11 @@ def plot_init(line):
 
 if __name__ == "__main__":
 
-    T1 = 35.0
+    T1 = 1.0
     RESOLUTION = 1000
 
-    # system = make_single_arm_system(0.18, 0.0, 0.095)
-    system = make_ball_and_beam_system(0.1, 0.1, 0.1)
+    system = make_single_arm_system(76.0, 0.5, 30.0)
+    # system = make_ball_and_beam_system(0.1, 0.1, 0.1)
 
     ref = 1.0
     A, B, C, D = system._statespace()
@@ -229,7 +243,7 @@ if __name__ == "__main__":
     plt.show()
 
 
-    if True:
+    if False:
 
         lr = 1e-4
         opt = optax.sgd(learning_rate=lr, momentum=0.9, nesterov=True)
@@ -240,7 +254,7 @@ if __name__ == "__main__":
         step_fn = make_step(opt, loss)
 
         # Gradient descent loop
-        for ii in range(1000):
+        for ii in range(10000):
             value, system, opt_state = step_fn(system, opt_state, x0, ref)
             system = clip_gains(system)
             if ii % 10 == 0:
