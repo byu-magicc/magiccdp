@@ -36,7 +36,7 @@ dev = [
 # when the package is installed.
 [tool.setuptools.packages.find]
 include = ["magiccdp*"]
-exclude = ["docs*", "jupyter_tutorials*"]
+exclude = ["docs*", "jupyter_tutorials*", "marimo_tutorials*"]
 
 
 [build-system]
