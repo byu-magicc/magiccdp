@@ -11,10 +11,7 @@ import equinox as eqx
 from diffrax import diffeqsolve, ODETerm, Tsit5, SaveAt, PIDController
 import optax
 import matplotlib.pyplot as plt
-
-import sys
-if sys.flags.debug:
-    import pdb
+from argparse import ArgumentParser
 
 
 class PIDSystem(eqx.Module):
@@ -24,7 +21,6 @@ class PIDSystem(eqx.Module):
     kp: Array | float
     ki: Array | float
     kd: Array | float
-    # Tf: Array | float # For approximation of derivative TF; see https://www.cds.caltech.edu/~murray/courses/cds101/fa04/caltech/am04_ch8-3nov04.pdf
     dyn_num: list[float]
     dyn_denom: list[float]
 
@@ -32,14 +28,12 @@ class PIDSystem(eqx.Module):
         kp: Array | float,
         ki: Array | float,
         kd: Array | float,
-        # Tf: Array | float,
         dyn_num: list[float],
         dyn_denom: list[float]
     ):
         self.kp = kp
         self.ki = ki
         self.kd = kd
-        # self.Tf = Tf
         self.dyn_num = dyn_num
         self.dyn_denom = dyn_denom
 
@@ -47,12 +41,7 @@ class PIDSystem(eqx.Module):
         kp = self.kp
         ki = self.ki
         kd = self.kd
-        # Tf = self.Tf
 
-        # pid_num = jnp.array([kp*Tf + kd, kp + ki*Tf, ki])
-        # pid_denom = jnp.array([Tf, 1.0, 0])
-
-        # pid_num = jnp.array([kd, kp, ki])
         pid_num = jnp.hstack([kd, kp, ki])
         pid_denom = jnp.array([1.0, 0])
 
@@ -64,26 +53,17 @@ class PIDSystem(eqx.Module):
         denom = denom/lead_coeff
         num = jnp.polymul(dyn_num, pid_num) / lead_coeff
 
-        polydiv = jnp.polydiv
-
         return num, denom
         
 
     def _statespace(self):
         """
         Returns the state-space representation of the PID controller.
+
+        Should be able to handle any proper (or strictly proper) transfer function.
         """
         num, denom = self._num_denom()
         D, num = jnp.polydiv(num, denom)
-
-        # # DEBUG
-        # vstack = jnp.vstack
-        # hstack = jnp.hstack
-        # zeros = jnp.zeros
-        # eye = jnp.eye
-        # flip = jnp.flip
-        # # END DEBUG
-
 
         A = jnp.vstack((
             jnp.hstack((
@@ -93,18 +73,18 @@ class PIDSystem(eqx.Module):
             -jnp.flip(denom[1:])
         ))
 
-
         B = jnp.hstack((
             jnp.zeros((1, len(denom)-2)),
             jnp.array([[1]])
         )).reshape(-1)
+
         C = jnp.flip(jnp.hstack((jnp.zeros((len(denom) - len(num)-1)), num)))
 
         return A, B, C, D
 
 
     def __call__(self, t, x, params):
-        A, B, C, D = self._statespace()
+        A, B, _, _ = self._statespace()
 
         return A @ x + B * params['ref']
 
@@ -128,7 +108,6 @@ def solve(system: PIDSystem, x0: Array, ref: float, t1=1.0, resolution=1000):
 
 def make_loss(system, t1=1.0, resolution=100):
 
-
     @eqx.filter_value_and_grad
     def loss(system, x0, ref):
         sol = solve(system, x0, ref, t1=t1, resolution=resolution)
@@ -140,6 +119,7 @@ def make_loss(system, t1=1.0, resolution=100):
 
     return loss
     
+
 
 def make_step(opt, loss_fn):
 
@@ -153,7 +133,12 @@ def make_step(opt, loss_fn):
     return step
 
 
+
 def clip_gains(system: PIDSystem):
+    """
+    Keeps the gains within the specified ranges below.
+    Useful for, e.g., preventing gains from going negative.
+    """
     kp = jnp.clip(system.kp, 0.01, 10.0)
     ki = jnp.clip(system.ki, 0.0, 30.0)
     kd = jnp.clip(system.kd, 0.0, 30.0)
@@ -170,11 +155,8 @@ def make_PIDSystem(kp, ki, kd):
 
     return PIDSystem(
         kp=jnp.array([kp]).reshape(-1),
-        # kp=0.1,
         ki=jnp.array([ki]).reshape(-1),
-        # kd=0.095,
         kd=jnp.array([kd]).reshape(-1),
-        # Tf=1.0,
         dyn_num=[3/(m*l**2)],
         dyn_denom=[1.0, 3*b/(m*l**2), 0.0]
     )
@@ -211,18 +193,18 @@ def make_pendulum(kp, ki, kd):
     )
     
 
+parser = ArgumentParser()
+parser.add_argument("--train", action="store_true")
+
 
 if __name__ == "__main__":
 
-    m = 0.5
-    b = 0.01
-    l = 0.3
-    g = 9.8
+    args = parser.parse_args()
 
     T1 = 35.0
     RESOLUTION = 1000
 
-    single_arm = make_PIDSystem(0.18, 1.0, 0.095)
+    single_arm = make_PIDSystem(0.18, 0.0, 0.095)
     motor_pos = make_MotorSystem(10.0, 0.0, 0.0)
     pendulum = make_pendulum(1.0, 0.1, 0.0)
 
@@ -232,8 +214,6 @@ if __name__ == "__main__":
     A, B, C, D = system._statespace()
     x0 = jnp.zeros(A.shape[0])
     # x0 = x0.at[1].set(0.1)
-
-    pdb.set_trace() if sys.flags.debug else None
 
     sol = solve(system, x0, ref, t1=T1, resolution=RESOLUTION)
 
@@ -245,7 +225,7 @@ if __name__ == "__main__":
     plt.show()
 
 
-    if True:
+    if args.train:
 
         lr = 1e-4
         opt = optax.sgd(learning_rate=lr, momentum=0.9, nesterov=True)
