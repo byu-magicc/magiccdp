@@ -245,7 +245,7 @@ if __name__ == "__main__":
     plt.show()
 
 
-    if False:
+    if True:
 
         lr = 1e-4
         opt = optax.sgd(learning_rate=lr, momentum=0.9, nesterov=True)
@@ -256,9 +256,7 @@ if __name__ == "__main__":
         step_fn = make_step(opt, loss)
 
 
-        pdb.set_trace() if sys.flags.debug else None
-
-        for ii in range(10000):
+        for ii in range(1000):
             value, system, opt_state = step_fn(system, opt_state, x0, ref)
             system = clip_gains(system)
             if ii % 10 == 0:
