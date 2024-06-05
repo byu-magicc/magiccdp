@@ -1,10 +1,13 @@
 """
-Classes for simulating PID controllers.
+Classes and functions for simulating PID controllers on SISO plants.
+
+Contributors: James Usevitch (james_usevitch@byu.edu)
+              Cameron Stoker
+              Tanner Osburn
 """
 
 import jax
-jax.config.update('jax_platform_name', 'cpu')
-from jax import jit, grad
+jax.config.update('jax_platform_name', 'cpu') # Sets the default device to CPU
 import jax.numpy as jnp
 from jax import Array
 import equinox as eqx
@@ -16,7 +19,12 @@ from argparse import ArgumentParser
 
 class PIDSystem(eqx.Module):
     """
-    Simple PID controller for SISO system.
+    Sets up a PID controller for a SISO plant.
+    Automatically converts from transfer function to control canonical
+    state-space representation.
+
+    Note that this class is a frozen dataclass since it inherits from
+    `eqx.Module`. This means that all fields are immutable after initialization.
     """
     kp: Array | float
     ki: Array | float
@@ -31,11 +39,22 @@ class PIDSystem(eqx.Module):
         dyn_num: list[float],
         dyn_denom: list[float]
     ):
+        """
+        Args:
+
+            kp:    Proportional gain. Pass in as jnp.array([kp]) to make tunable, or as a float to freeze.
+            ki:    Integral gain. See kp instructions for tuning / freezing.
+            kd:    Derivative gain. See kp instructions for tuning / freezing.
+            dyn_num: Numerator of the plant transfer function. Pass in as list of floats.
+            dyn_denom: Denominator of the plant transfer function. Pass in as list of floats.
+        
+        """
         self.kp = kp
         self.ki = ki
         self.kd = kd
         self.dyn_num = dyn_num
         self.dyn_denom = dyn_denom
+
 
     def _num_denom(self):
         kp = self.kp
@@ -162,53 +181,13 @@ def make_PIDSystem(kp, ki, kd):
     )
 
 
-def make_MotorSystem(kp, ki, kd):
-    J = 3.2284e-6
-    b = 3.5077e-6
-    K = 0.0274
-    R = 4
-    L = 2.75e-6
-
-    return PIDSystem(
-        kp=jnp.array([kp]).reshape(-1),
-        ki=jnp.array([ki]).reshape(-1),
-        kd=jnp.array([kd]).reshape(-1),
-        dyn_num=[K],
-        dyn_denom=[J*L, J*R+L*b, R*b+K**2, 0.0]
-    )
-
-
-def make_pendulum(kp, ki, kd):
-    m = 0.5
-    b = 0.01
-    l = 0.3
-    g = 9.8
-
-    return PIDSystem(
-        kp=jnp.array([kp]).reshape(-1),
-        ki=jnp.array([ki]).reshape(-1),
-        kd=jnp.array([kd]).reshape(-1),
-        dyn_num=[1],
-        dyn_denom=[1.0, 0, -9]
-    )
-    
-
-parser = ArgumentParser()
-parser.add_argument("--train", action="store_true")
-
 
 if __name__ == "__main__":
-
-    args = parser.parse_args()
 
     T1 = 35.0
     RESOLUTION = 1000
 
-    single_arm = make_PIDSystem(0.18, 0.0, 0.095)
-    motor_pos = make_MotorSystem(10.0, 0.0, 0.0)
-    pendulum = make_pendulum(1.0, 0.1, 0.0)
-
-    system = single_arm
+    system = make_PIDSystem(0.18, 0.0, 0.095)
 
     ref = 1.0
     A, B, C, D = system._statespace()
@@ -225,18 +204,18 @@ if __name__ == "__main__":
     plt.show()
 
 
-    if args.train:
+    if True:
 
         lr = 1e-4
         opt = optax.sgd(learning_rate=lr, momentum=0.9, nesterov=True)
         # opt = optax.adamw(learning_rate=lr)
-        opt_state = opt.init(single_arm)
+        opt_state = opt.init(system)
 
         loss = make_loss(system, t1=T1, resolution=500)
         step_fn = make_step(opt, loss)
 
-
-        for ii in range(1000):
+        # Gradient descent loop
+        for ii in range(100):
             value, system, opt_state = step_fn(system, opt_state, x0, ref)
             system = clip_gains(system)
             if ii % 10 == 0:
@@ -250,6 +229,7 @@ if __name__ == "__main__":
         plt.plot(sol.ts, jnp.ones_like(sol.ts) * ref)
         plt.show()
 
+        # Use the terminal command `python -i pid.py` to inspect the final gains
         kp_final = system.kp
         ki_final = system.ki
         kd_final = system.kd
