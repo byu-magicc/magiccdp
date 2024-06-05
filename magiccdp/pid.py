@@ -134,8 +134,8 @@ def make_loss(system, t1=1.0, resolution=100):
         sol = solve(system, x0, ref, t1=t1, resolution=resolution)
         _, _, C, D = system._statespace()
         y = (C @ sol.ys.T).T + D * ref
-        loss = jnp.sum((y - ref)**2)
-        jax.debug.breakpoint()
+        # loss = jnp.sum((y - ref)**2) + jnp.sum(jnp.maximum(y - ref, jnp.zeros_like(y)))
+        loss = jnp.sum((y - ref)**2) + jnp.max(y - ref)
         return loss
 
     return loss
@@ -202,12 +202,13 @@ if __name__ == "__main__":
 
         pdb.set_trace() if sys.flags.debug else None
 
-        for ii in range(5000):
+        for ii in range(2000):
             value, single_arm, opt_state = step_fn(single_arm, opt_state, x0, ref)
             if ii % 10 == 0:
                 print(f"Loss at Step {ii}: {value}")
     
-        sol = solve(single_arm, x0, ref, t1=60.0)
+        sol = solve(single_arm, x0, ref, t1=T1, resolution=RESOLUTION)
+        _, _, C, D = single_arm._statespace()
         y = (C @ sol.ys.T).T + D * ref
 
         plt.plot(sol.ts, y)
