@@ -225,8 +225,8 @@ if __name__ == "__main__":
     T1 = 1.0
     RESOLUTION = 1000
 
-    system = make_single_arm_system(0.1, 0.1, 0.1)
-    # system = make_ball_and_beam_system(0.1, 0.1, 0.1)
+    # system = make_single_arm_system(0.1, 0.1, 0.1)
+    system = make_ball_and_beam_system(0.1, 0.1, 0.1)
 
     ref = 1.0
     A, B, C, D = system._statespace()
