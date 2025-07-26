@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.5.2"
+__generated_with = "0.6.14"
 app = marimo.App()
 
 
@@ -47,11 +47,13 @@ def __(jax):
 
 @app.cell
 def __(mo):
-    mo.md(r"""
-    ## First steps: Interpolating Two Points
+    mo.md(
+        r"""
+        ## First steps: Interpolating Two Points
 
-    Suppose we have two points. We would like to interpolate a line between them. The two points are plotted below.
-    """)
+        Suppose we have two points. We would like to interpolate a line between them. The two points are plotted below.
+        """
+    )
     return
 
 
@@ -71,19 +73,21 @@ def __(jax, key_0, plt):
 
 @app.cell
 def __(mo):
-    mo.md(r"""
-    We can interpolate between the points using the equation for a line:
+    mo.md(
+        r"""
+        We can interpolate between the points using the equation for a line:
 
-    $$
-    f(x) = mx+b
-    $$
+        $$
+        f(x) = mx+b
+        $$
 
-    But what should we put as the values of $m$ and $b$? These two variables are called **parameters**. They define an entire family of lines. We specify exactly what line we want by choosing a specific value for $m$ and $b$.
+        But what should we put as the values of $m$ and $b$? These two variables are called **parameters**. They define an entire family of lines. We specify exactly what line we want by choosing a specific value for $m$ and $b$.
 
-    Intuitively, you can think of $m$ and $b$ as "control knobs" that change the shape of our function. Changing the control knobs morphs the function into a different form.
+        Intuitively, you can think of $m$ and $b$ as "control knobs" that change the shape of our function. Changing the control knobs morphs the function into a different form.
 
-    Using the sliders below, see if you can interpolate the two points by hand.
-    """)
+        Using the sliders below, see if you can interpolate the two points by hand.
+        """
+    )
     return
 
 
@@ -529,21 +533,23 @@ def __(
 
 @app.cell
 def __(mo):
-    mo.md(r"""
-    Gradients can be computed by calculating the directional derivatives of each component of a multivariable function, and then putting those directional derivatives into a matrix.
+    mo.md(
+        r"""
+        Gradients can be computed by calculating the directional derivatives of each component of a multivariable function, and then putting those directional derivatives into a matrix.
 
-    We _could_ do this by hand. Or, we can be more pragmatic and use a programming language that supports taking gradients "automagically".
+        We _could_ do this by hand. Or, we can be more pragmatic and use a programming language that supports taking gradients "automagically".
 
-    Enter JAX. JAX is essentially Numpy with three superpowers:
+        Enter JAX. JAX is essentially Numpy with three superpowers:
 
-    * Automatic Differentiation (it can take gradients for you)
-    * GPU support (to speed up super large matrix multiplications and much more)
-    * JIT compilation (so that your Python code runs fast like C++ instead of slow like....Python)
+        * Automatic Differentiation (it can take gradients for you)
+        * GPU support (to speed up super large matrix multiplications and much more)
+        * JIT compilation (so that your Python code runs fast like C++ instead of slow like....Python)
 
-    It also has one Kryptonite: it is (largely) a functional programming language. But we'll get to that later.
+        It also has one Kryptonite: it is (largely) a functional programming language. But we'll get to that later.
 
-    Check out the Python code below to practice taking gradients / derivatives with JAX.
-    """)
+        Check out the Python code below to practice taking gradients / derivatives with JAX.
+        """
+    )
     return
 
 
@@ -606,9 +612,7 @@ def __(func1, jax, jnp):
 
 @app.cell
 def __(mo):
-    mo.md(r"""
-    Try computing the gradient of the following function using the vector $[1.0, 2.0, 3.0]$. What happens?
-    """)
+    mo.md(r"Try computing the gradient of the following function using the vector $[1.0, 2.0, 3.0]$. What happens?")
     return
 
 
@@ -623,20 +627,21 @@ def __():
 
 @app.cell(hide_code=True)
 def __(mo):
-    mo.md(r"""
-    An error occurred! JAX should have output something similar to the following:
+    mo.md(
+        r"""
+        An error occurred! JAX should have output something similar to the following:
 
-    ```python
-    TypeError: Gradient only defined for scalar-output functions. Output had shape: (3,).
-    ```
+        ```python
+        TypeError: Gradient only defined for scalar-output functions. Output had shape: (3,).
+        ```
 
-    The problem is that gradients are only defined for functions with a _scalar_ output. The function above had a _vector_ output. What does it mean to take the derivative of a vector?
+        The problem is that gradients are only defined for functions with a _scalar_ output. The function above had a _vector_ output. What does it mean to take the derivative of a vector?
 
-    Gradients are a special case of something called **Jacobian matrices**. If your function has $n$ output entries, a Jacobian essentially takes the gradient of each entry and stacks all the gradients into a matrix.
+        Gradients are a special case of something called **Jacobian matrices**. If your function has $n$ output entries, a Jacobian essentially takes the gradient of each entry and stacks all the gradients into a matrix.
 
-    See the following code cells for computing the Jacobian with JAX!
-
-    """)
+        See the following code cells for computing the Jacobian with JAX!
+        """
+    )
     return
 
 
@@ -689,11 +694,13 @@ def __():
 
 @app.cell
 def __(mo):
-    mo.md(r"""
-    ## Back To Our Problem
+    mo.md(
+        r"""
+        ## Back To Our Problem
 
-    Now that we know how to compute gradients, let's compute the gradient for our error function. The function definition is given below.
-    """)
+        Now that we know how to compute gradients, let's compute the gradient for our error function. The function definition is given below.
+        """
+    )
     return
 
 
@@ -902,23 +909,24 @@ def __(
 
 @app.cell
 def __(mo):
-    mo.md(r"""
-    **Success!!!** We have taught the computer how to interpolate those two points by itself.
+    mo.md(
+        r"""
+        **Success!!!** We have taught the computer how to interpolate those two points by itself.
 
-    But let's step back for a second. What we've just seen is a very simple example of an incredibly powerful principle: **We have programmed the computer to correct itself based on an error function.**
+        But let's step back for a second. What we've just seen is a very simple example of an incredibly powerful principle: **We have programmed the computer to correct itself based on an error function.**
 
-    This brings us to the fundamental strategy of differentiable programming:
+        This brings us to the fundamental strategy of differentiable programming:
 
-    * Define a differentiable error function
-    * Compute a descent direction for the parameters
-    * Update the parameters in the descent direction
-    * Repeat until the error function converges to zero
+        * Define a differentiable error function
+        * Compute a descent direction for the parameters
+        * Update the parameters in the descent direction
+        * Repeat until the error function converges to zero
 
-    Virtually all applications in differentiable programming boil down to this simple workflow.
+        Virtually all applications in differentiable programming boil down to this simple workflow.
 
-    We will see more complicated examples in later workbooks. But despite the added complexity, at the end of the day the fundamental workflow is the same.
-
-    """)
+        We will see more complicated examples in later workbooks. But despite the added complexity, at the end of the day the fundamental workflow is the same.
+        """
+    )
     return
 
 

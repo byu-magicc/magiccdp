@@ -125,7 +125,8 @@ def solve(system: PIDSystem, x0: Array, ref: float, t1=1.0, resolution=1000):
     terms = ODETerm(system)
     sol = diffeqsolve(
         terms=terms,
-        solver=Kvaerno3(),
+        # solver=Kvaerno3(),
+        solver=Tsit5(),
         t0=0.0,
         t1=t1,
         dt0=0.01,
@@ -172,7 +173,7 @@ def clip_gains(system: PIDSystem):
     Useful for, e.g., preventing gains from going negative.
     """
     kp = jnp.clip(system.kp, 0.01, 30.0)
-    ki = jnp.clip(system.ki, 0.0, 30.0)
+    ki = jnp.clip(system.ki, 0.05, 30.0)
     kd = jnp.clip(system.kd, 0.0, 500.0)
 
     return PIDSystem(kp=kp, ki=ki, kd=kd, dyn_num=system.dyn_num, dyn_denom=system.dyn_denom)
@@ -222,7 +223,7 @@ def plot_init(line):
 
 if __name__ == "__main__":
 
-    T1 = 1.0
+    T1 = 10.0
     RESOLUTION = 1000
 
     # system = make_single_arm_system(0.1, 0.1, 0.1)
@@ -254,7 +255,7 @@ if __name__ == "__main__":
         step_fn = make_step(opt, loss)
 
         # Gradient descent loop
-        for ii in range(10000):
+        for ii in range(20000):
             value, system, opt_state = step_fn(system, opt_state, x0, ref)
             system = clip_gains(system)
             if ii % 10 == 0:
